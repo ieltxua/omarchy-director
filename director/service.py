@@ -234,6 +234,13 @@ class Director:
             return False
         return bool(re.match(r"^(?:focus|show me|take me to|bring me to|go to|enfoc[aá]|mostr[aá]me|llev[aá]me a|ll[eé]vame a|ir a)\b", lowered))
 
+    @staticmethod
+    def _explicit_native_capability(query: str) -> str | None:
+        lowered = query.casefold()
+        subject = re.search(r"\b(?:window|windows|ventana|ventanas|corner|corners|esquina|esquinas|border|borders|bordes)\b", lowered)
+        rounding = re.search(r"\b(?:round(?:ed|ing)?|square|sharp|redondead[ao]s?|redonde|rect[ao]s?)\b", lowered)
+        return "window_rounding" if subject and rounding else None
+
     def plan(self, query: str) -> Plan:
         scene_plan = self._scene_query_plan(query)
         if scene_plan: return scene_plan
@@ -259,6 +266,9 @@ class Director:
             next_empty = next((number for number in range(1, max(existing, default=0) + 2) if number not in existing), max(existing, default=0) + 1)
         create = max(existing, default=0) + 1
         workspace_options = ["keep", "no_match", "next_empty", *(f"workspace:{number}" for number in existing[:12]), f"create:{create}"]
+        explicit_capability = self._explicit_native_capability(base_query)
+        if explicit_capability:
+            return self._plan_capability(base_query, explicit_capability, 1.0, None, 0.0, None, 0.0, workspace_options, next_empty, state)
         ranked_apps = self._rank_apps(query, apps)
         active_address = str(state.get("active", {}).get("address", "")) or None
         safe_state = {"request": query[:500], "windows": [{"address": address, "title": str(client.get("title", ""))[:120], "class": str(client.get("class", ""))[:80], "workspace": client.get("workspace", {}).get("id"), "size": client.get("size"), "active": address == active_address} for address, client in sorted(clients.items())[:MAX_WINDOWS]], "apps": [{"id": app, "name": apps[app]["name"]} for app in ranked_apps], "workspaces": workspace_options, "themes": themes}

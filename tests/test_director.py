@@ -217,6 +217,10 @@ class DirectorTests(unittest.TestCase):
   response=answers("keep"); response["capability"]={"type":"choice","choice":"dnd_toggle","confidence":.96}
   native=FakeNative(); plan=Director(self.hypr,FakeJev(response),self.store,launcher=Mock(),sleeper=lambda _:None,native=native).plan("activa modo sin notificaciones")
   self.assertTrue(plan.executable); self.assertEqual(plan.steps[0].target,"dnd_toggle")
+ def test_explicit_global_rounding_does_not_depend_on_probabilistic_routing(self):
+  response=answers("no_match"); response["capability"]={"type":"choice","choice":"no_match","confidence":.99}
+  native=FakeNative(); plan=Director(self.hypr,FakeJev(response),self.store,launcher=Mock(),sleeper=lambda _:None,native=native).plan("make every window square")
+  self.assertTrue(plan.executable); self.assertEqual(plan.steps[0].target,"window_rounding")
  def test_normal_action_can_save_result_as_scene(self):
   director=self.make(answers("move",["0xaaa"],workspace="workspace:2"))
   plan=director.plan("move Terminal to workspace 2 and save as focus desk")
