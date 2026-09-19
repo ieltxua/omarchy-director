@@ -109,12 +109,17 @@ def select_cases(cases: list[dict], prefixes: list[str], limit: int = 0) -> list
     return selected[: max(0, limit)] if limit else selected
 
 
+def should_retry_infrastructure(category: str, attempt: int, retries: int) -> bool:
+    return category == "infrastructure" and attempt <= retries
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate Director's semantic contracts through the configured Jev gateway without executing actions.")
     parser.add_argument("--contracts", type=Path, default=REPO / "tests/contracts/semantic.json")
     parser.add_argument("--limit", type=int, default=0, help="evaluate only the first N cases; zero means all")
     parser.add_argument("--id-prefix", action="append", default=[], help="evaluate only cases whose id starts with this value; repeatable")
     parser.add_argument("--requests-per-minute", type=int, default=int(os.environ.get("DIRECTOR_SEMANTIC_RPM", "0")), help="pace cases to stay below a gateway/provider request budget")
+    parser.add_argument("--infrastructure-retries", type=int, default=1, help="retry transient gateway failures without retrying semantic failures")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args(argv)
     contract = json.loads(args.contracts.read_text(encoding="utf-8"))
@@ -127,17 +132,26 @@ def main(argv: list[str] | None = None) -> int:
     with tempfile.TemporaryDirectory() as temporary, patch("director.service.desktop_entries", return_value=APPS):
         director = Director(hypr=PlanningDesktop(), store=Store(temporary), native=PlanningNative(), sleeper=lambda _seconds: None)
         for case in cases:
-            delay = minimum_interval - (time.monotonic() - last_case_started)
-            if delay > 0:
-                time.sleep(delay)
-            last_case_started = time.monotonic()
-            try:
-                plan = director.plan(case["query"])
-                failures = validate(case, plan)
-                infrastructure = any("jev gateway" in warning.casefold() for warning in plan.warnings)
-                results.append({"id": case["id"], "query": case["query"], "passed": not failures, "category": "infrastructure" if failures and infrastructure else ("semantic" if failures else "passed"), "failures": failures, "plan": plan.to_dict()})
-            except Exception as exc:
-                results.append({"id": case["id"], "query": case["query"], "passed": False, "category": "infrastructure", "failures": [str(exc)]})
+            attempt = 0
+            while True:
+                attempt += 1
+                delay = minimum_interval - (time.monotonic() - last_case_started)
+                if delay > 0:
+                    time.sleep(delay)
+                last_case_started = time.monotonic()
+                try:
+                    plan = director.plan(case["query"])
+                    failures = validate(case, plan)
+                    infrastructure = any("jev gateway" in warning.casefold() for warning in plan.warnings)
+                    category = "infrastructure" if failures and infrastructure else ("semantic" if failures else "passed")
+                    result = {"id": case["id"], "query": case["query"], "passed": not failures, "category": category, "failures": failures, "plan": plan.to_dict(), "attempts": attempt}
+                except Exception as exc:
+                    result = {"id": case["id"], "query": case["query"], "passed": False, "category": "infrastructure", "failures": [str(exc)], "attempts": attempt}
+                if should_retry_infrastructure(result["category"], attempt, max(0, args.infrastructure_retries)):
+                    continue
+                result["recovered_infrastructure"] = attempt > 1 and result["passed"]
+                results.append(result)
+                break
     report = {
         "schema_version": 1,
         "model": "typesafe/jev-1.13",
@@ -149,7 +163,9 @@ def main(argv: list[str] | None = None) -> int:
         "failed": sum(not result["passed"] for result in results),
         "semantic_failed": sum(result.get("category") == "semantic" for result in results),
         "infrastructure_failed": sum(result.get("category") == "infrastructure" for result in results),
+        "infrastructure_recovered": sum(bool(result.get("recovered_infrastructure")) for result in results),
         "requests_per_minute": args.requests_per_minute,
+        "infrastructure_retries": max(0, args.infrastructure_retries),
         "results": results,
     }
     payload = json.dumps(report, ensure_ascii=False, indent=2) + "\n"

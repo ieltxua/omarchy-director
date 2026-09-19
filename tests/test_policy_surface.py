@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 
-from tests.lab.semantic_eval import expand_contract, select_cases
+from tests.lab.semantic_eval import expand_contract, select_cases, should_retry_infrastructure
 from tests.lab.capability_audit import parse_hyprctl_commands
 from director.capabilities import CAPABILITY_CRITERIA
 
@@ -85,6 +85,11 @@ class SemanticContractTests(unittest.TestCase):
     def test_exhaustive_runner_filters_failed_families_without_reordering(self):
         cases = [{"id": "focus-001"}, {"id": "resize-001"}, {"id": "focus-002"}]
         self.assertEqual([case["id"] for case in select_cases(cases, ["focus-"], 1)], ["focus-001"])
+
+    def test_exhaustive_runner_retries_only_bounded_infrastructure_failures(self):
+        self.assertTrue(should_retry_infrastructure("infrastructure", 1, 1))
+        self.assertFalse(should_retry_infrastructure("infrastructure", 2, 1))
+        self.assertFalse(should_retry_infrastructure("semantic", 1, 1))
 
     def test_capability_matrix_covers_every_public_native_capability(self):
         payload = json.loads((REPO / "tests/contracts/capability_matrix.json").read_text(encoding="utf-8"))
