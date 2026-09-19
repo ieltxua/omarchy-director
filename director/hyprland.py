@@ -70,6 +70,13 @@ class Hyprland:
             self.focus_workspace(f"name:{workspace_name}")
         selector = f"address:{wanted}"
         self.eval_dispatch(f"hl.dsp.focus({{ window = {json.dumps(selector)} }})")
+        # With follow_mouse enabled, focus can immediately return to the window
+        # under the pointer. Land the pointer inside the requested window so the
+        # spoken/navigation intent remains stable.
+        at, size = client.get("at"), client.get("size")
+        if isinstance(at, list) and isinstance(size, list) and len(at) == 2 and len(size) == 2 and all(isinstance(value, int) for value in [*at, *size]):
+            x, y = at[0] + size[0] // 2, at[1] + size[1] // 2
+            self.eval_dispatch(f"hl.dsp.cursor.move({{ x = {x}, y = {y} }})")
 
     def move_window(self, address: str, workspace: int | str, follow: bool = False) -> None:
         selector = f"address:{self._address(address)}"
