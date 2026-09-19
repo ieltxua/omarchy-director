@@ -367,8 +367,9 @@ and lists available-but-unimplemented opportunities and explicit policy exclusio
 The live runner aborts if its workspaces are occupied or stale fixtures exist,
 checks the effect and exact undo after every case, kills only processes it started,
 and restores the previously focused workspace. On Omarchy the fast suite also
-invokes the native plugin validator. A stable release requires all four gates plus
-bar, F10, and one real microphone smoke test when voice behavior changed.
+invokes the native plugin validator. A stable release requires `fast`, `stress`,
+`semantic-all`, `api-audit`, and `live`, plus bar, F10, and one real microphone
+smoke test when voice behavior changed.
 
 The current headless acceptance run passes 9 of 10 live compositor cases. Exact window
 focus is the remaining acceptance gap: the typed Hyprland dispatcher returns
