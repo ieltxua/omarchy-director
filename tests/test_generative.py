@@ -172,11 +172,13 @@ class DirectorGenerativeTests(unittest.TestCase):
         snapshot = {
             "windows": {"0x100": {**alpha, "at": [0, 0]}},
             "active": "0x200",
+            "active_workspace": {"id": 91, "name": "91"},
         }
         warnings = director._restore_snapshot(snapshot)
         self.assertEqual(warnings, [])
         self.assertEqual(hypr._client("0x100")["at"], [0, 0])
         self.assertEqual(hypr._client("0x200")["at"], [950, 0])
+        self.assertIn(("focus_workspace", 91), hypr.calls)
 
 
 if __name__ == "__main__":

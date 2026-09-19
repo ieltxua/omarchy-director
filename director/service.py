@@ -391,7 +391,8 @@ class Director:
                 except CapabilityError as exc: warnings.append(str(exc))
         else: warnings.append("No pude identificar una capacidad nativa compatible")
         summary = steps[0].summary if steps else "No hay una acción segura para ejecutar"
-        plan = Plan(secrets.token_urlsafe(24), query, confidence, summary, steps, warnings, bool(steps) and not warnings, time.time(), {"windows": {}, "active": state.get("active", {}).get("address")})
+        active = state.get("active", {})
+        plan = Plan(secrets.token_urlsafe(24), query, confidence, summary, steps, warnings, bool(steps) and not warnings, time.time(), {"windows": {}, "active": active.get("address"), "active_workspace": active.get("workspace")})
         return self._store_plan(plan)
 
     @staticmethod
@@ -405,7 +406,7 @@ class Director:
     @staticmethod
     def _snapshot(clients: dict[str, dict[str, Any]], targets: list[str], active: dict[str, Any]) -> dict[str, Any]:
         windows = {target: {key: clients[target].get(key) for key in ("address", "at", "size", "workspace", "floating", "fullscreen")} for target in targets if target in clients}
-        return {"windows": windows, "active": active.get("address")}
+        return {"windows": windows, "active": active.get("address"), "active_workspace": active.get("workspace")}
 
     @staticmethod
     def _desktop_id_for_class(window_class: str, apps: dict[str, dict[str, str]]) -> str | None:
@@ -654,10 +655,31 @@ class Director:
             if not isinstance(target_at, list) or len(target_at) != 2 or not isinstance(target_size, list) or len(target_size) != 2:
                 continue
             try:
+                workspace = snapshot.get("workspace", {})
+                workspace_id = workspace.get("id") if isinstance(workspace, dict) else None
+                workspace_name = workspace.get("name") if isinstance(workspace, dict) else None
+                destination: int | str | None = workspace_id if isinstance(workspace_id, int) and workspace_id > 0 else None
+                if destination is None and isinstance(workspace_name, str) and workspace_name:
+                    destination = f"name:{workspace_name}"
+                # Hyprland's layout swap is scoped to the visible workspace even
+                # when the window argument is explicit. Make the target layout
+                # active before restoring a tiled slot.
+                if destination is not None:
+                    self.hypr.focus_workspace(destination)
                 if not self._restore_tiled_position(address, target_at, max(2, len(snapshots) * 2)):
                     warnings.append(f"{address}: tiled position did not return to its previous slot")
             except Exception as exc:
                 warnings.append(f"{address}: tiled position: {exc}")
+        active_workspace = snapshot_root.get("active_workspace", {})
+        active_workspace_id = active_workspace.get("id") if isinstance(active_workspace, dict) else None
+        active_workspace_name = active_workspace.get("name") if isinstance(active_workspace, dict) else None
+        try:
+            if isinstance(active_workspace_id, int) and active_workspace_id > 0:
+                self.hypr.focus_workspace(active_workspace_id)
+            elif isinstance(active_workspace_name, str) and active_workspace_name:
+                self.hypr.focus_workspace(f"name:{active_workspace_name}")
+        except Exception as exc:
+            warnings.append(f"active workspace: {exc}")
         active = snapshot_root.get("active")
         if isinstance(active, str) and active in current:
             try: self.hypr.focus_window(active)
