@@ -365,7 +365,7 @@ class HyprTests(unittest.TestCase):
   self.assertTrue(any('window = "address:0xaaa"' in value for value in evals))
   self.assertTrue(any('workspace = "2"' in value for value in evals))
   self.assertTrue(any('hl.dsp.cursor.move({ x = 500, y = 500 })' in value for value in evals))
-  self.assertTrue(any(call.args[0] == ["hyprctl","dispatch","focuswindow","address:0xaaa"] for call in runner.call_args_list))
+  self.assertTrue(any(call.args[0] == ["hyprctl","dispatch",'hl.dsp.focus({ window = "address:0xaaa" })'] for call in runner.call_args_list))
 
 class CliTests(unittest.TestCase):
  def test_history_limit_returns_top_level_items(self):
