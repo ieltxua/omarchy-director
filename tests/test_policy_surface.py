@@ -7,6 +7,9 @@ import subprocess
 import tempfile
 import unittest
 
+from tests.lab.semantic_eval import expand_contract
+from director.capabilities import CAPABILITY_CRITERIA
+
 from director.models import Plan, Step
 
 
@@ -60,6 +63,29 @@ class SemanticContractTests(unittest.TestCase):
             self.assertIsInstance(case["executable"], bool)
             if case["executable"]:
                 self.assertTrue(case.get("operations"))
+
+    def test_extended_contract_expands_to_a_large_unique_corpus(self):
+        payload = json.loads((REPO / "tests/contracts/semantic_extended.json").read_text(encoding="utf-8"))
+        cases = expand_contract(payload)
+        ids = [case["id"] for case in cases]
+        queries = [case["query"].casefold() for case in cases]
+        self.assertGreaterEqual(len(cases), 150)
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertEqual(len(queries), len(set(queries)))
+        for case in cases:
+            self.assertIsInstance(case.get("executable"), bool)
+            if case["executable"]:
+                self.assertTrue(case.get("operations"), case["id"])
+
+    def test_capability_matrix_covers_every_public_native_capability(self):
+        payload = json.loads((REPO / "tests/contracts/capability_matrix.json").read_text(encoding="utf-8"))
+        mapped = {capability["id"] for capability in payload["capabilities"]}
+        public = set(CAPABILITY_CRITERIA) - {"window_action", "no_match"}
+        self.assertEqual(mapped, public)
+        for capability in payload["capabilities"]:
+            self.assertTrue(capability["requirements"], capability["id"])
+            self.assertIn("unit", capability["tiers"])
+            self.assertIn("semantic", capability["tiers"])
 
 
 class VoiceAdapterTests(unittest.TestCase):

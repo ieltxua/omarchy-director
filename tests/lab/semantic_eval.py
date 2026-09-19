@@ -79,7 +79,29 @@ def validate(case: dict, plan) -> list[str]:
         actual = plan.steps[0].params.get(key) if plan.steps else None
         if actual != expected:
             failures.append(f"params.{key}={actual!r}, expected {expected!r}")
+    expected_auto = case.get("auto_executable")
+    if expected_auto is not None and plan.auto_executable is not bool(expected_auto):
+        failures.append(f"auto_executable={plan.auto_executable}, expected {expected_auto}")
+    warning_contains = case.get("warning_contains")
+    if warning_contains is not None and not any(str(warning_contains).casefold() in warning.casefold() for warning in plan.warnings):
+        failures.append(f"warnings={plan.warnings!r}, expected text {warning_contains!r}")
     return failures
+
+
+def expand_contract(contract: dict) -> list[dict]:
+    cases = list(contract.get("cases", []))
+    for family in contract.get("families", []):
+        family_id = str(family["id"])
+        expected = dict(family.get("expect", {}))
+        for index, item in enumerate(family.get("queries", []), start=1):
+            if isinstance(item, str):
+                query, overrides = item, {}
+            elif isinstance(item, dict) and isinstance(item.get("query"), str):
+                query, overrides = item["query"], {key: value for key, value in item.items() if key != "query"}
+            else:
+                raise ValueError(f"invalid query in family {family_id}")
+            cases.append({**expected, **overrides, "id": f"{family_id}-{index:03d}", "query": query})
+    return cases
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -89,7 +111,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--report", type=Path)
     args = parser.parse_args(argv)
     contract = json.loads(args.contracts.read_text(encoding="utf-8"))
-    cases = contract["cases"][: max(0, args.limit)] if args.limit else contract["cases"]
+    expanded = expand_contract(contract)
+    cases = expanded[: max(0, args.limit)] if args.limit else expanded
     started = time.time()
     results = []
     with tempfile.TemporaryDirectory() as temporary, patch("director.service.desktop_entries", return_value=APPS):
