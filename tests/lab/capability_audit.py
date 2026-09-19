@@ -40,7 +40,8 @@ def main(argv: list[str] | None = None) -> int:
     relevant = [command for command in public if command.get("group") in relevant_groups and not command.get("requires_sudo")]
 
     help_result = subprocess.run(["hyprctl", "--help"], capture_output=True, text=True, check=False)
-    hypr_help = f"{help_result.stdout}\n{help_result.stderr}" if help_result.returncode == 0 else ""
+    # Hyprland 0.56 prints valid help and exits 1 for the bare --help path.
+    hypr_help = f"{help_result.stdout}\n{help_result.stderr}"
     hypr_commands = parse_hyprctl_commands(hypr_help)
 
     required_routes = sorted({requirement for capability in matrix["capabilities"] for requirement in capability["requirements"] if requirement.startswith("omarchy ")})
