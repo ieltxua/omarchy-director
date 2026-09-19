@@ -21,9 +21,10 @@ this project uses [Semantic Versioning](https://semver.org/).
   idle, lock, and window-rounding phrases.
 - Reject screen OCR and external messaging explicitly instead of allowing them
   to collide with screenshot planning.
-- Record release-gate results: 21/21 capability mappings, more than 5,000
-  generated desktop cases, and 11/11 live Omarchy compositor cases with exact
-  effect and undo; palette and microphone smoke tests remain manual release gates.
+- Record release-gate results: 331/331 semantic cases after bounded failed-family
+  reruns, 21/21 capability mappings, 10,000 generated desktop cases, and 11/11
+  live Omarchy compositor cases with exact effect and undo; palette and microphone
+  smoke tests remain manual release gates.
 
 ## [2.1.0-rc.5] - 2026-09-19
 
