@@ -20,7 +20,7 @@ Prompt text is never executed as shell.
   Hyprland addresses and can launch identifiable missing applications.
 - **Composition:** say `float ChatGPT and save as review` in one request.
 - **Native control:** focus, move, resize, tile, float, fullscreen, launch, themes, audio,
-  brightness, global window rounding, night light, notification silencing,
+  brightness, global Hyprland styling, night light, notification silencing,
   capture, reminders, and lock.
 - **Real undo:** restores observed window, workspace, scene, theme, volume, and
   brightness state instead of blindly issuing the opposite command.
@@ -154,6 +154,10 @@ make X 20% smaller
 make the current window larger
 make all window borders rounded
 make every window square
+set all window gaps to 12 pixels
+set inactive window opacity to 80 percent
+turn off blur, shadows and animations
+apply the compact desktop preset
 move X to the left
 open Slack on workspace 2
 put Slack and Chromium side by side
@@ -173,6 +177,14 @@ remind me in 20 minutes to stretch
 
 The preview updates as you type. Press **Enter** to execute, **Ctrl+Z** to undo the
 latest reversible execution, and **Escape** to close.
+
+Global Hyprland styling supports inner and outer gaps, border size, active,
+inactive, and fullscreen opacity, blur size and passes, shadows, inactive-window
+dimming, animations, and corner rounding. Built-in `compact`, `spacious`,
+`minimal`, `focus`, and `performance` presets compose those same settings. Every
+request is previewed, bounded to a typed allowlist, observed before mutation,
+verified afterwards, and undoable. Director does not expose arbitrary Hyprland
+keys, Lua, shell, monitor, input, or window-rule configuration.
 
 Saved scenes appear on Director's home view as click-to-run entries. A scene stores
 semantic application/window identity, workspace, tiled/floating/fullscreen state,
@@ -349,7 +361,7 @@ portable GitHub job:
 # Real pinned Jev; plans against a synthetic desktop and never executes them.
 ./tests/director-lab semantic --report ~/.local/state/omarchy-director/semantic-report.json
 
-# Exhaustive 243-phrase bilingual capability, paraphrase, ambiguity, and
+# Exhaustive 331-phrase bilingual capability, paraphrase, ambiguity, and
 # unsupported-action corpus. Defaults to 90 requests/minute.
 ./tests/director-lab semantic-all --report ~/.local/state/omarchy-director/semantic-all-report.json
 

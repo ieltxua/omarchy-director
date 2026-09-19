@@ -260,6 +260,21 @@ class Director:
         rounding = re.search(r"\b(?:round(?:ed|ing)?|square|sharp|redonde(?:ad[ao]s?|[aá])?|cuadrad[ao]s?|rect[ao]s?)\b", lowered)
         if subject and rounding:
             return "window_rounding"
+        style_patterns = (
+            r"\b(?:gap|gaps|spacing|espaciado|separaci[oó]n)\b",
+            r"\b(?:border size|border thickness|borders thicker|borders thinner|grosor (?:de los )?bordes?|tama[nñ]o (?:de los )?bordes?|bordes? de tama[nñ]o)\b",
+            r"\b(?:blur|desenfoque|shadow|shadows|sombra|sombras)\b",
+            r"\b(?:dim|dimming|atenu(?:a|á|ar|aci[oó]n))\b.*\b(?:inactive|inactivas?)\b",
+            r"\b(?:animation|animations|animaci[oó]n|animaciones)\b",
+            r"\b(?:compact|compacto|compacta|spacious|airy|espacioso|espaciosa|amplio|amplia|minimalist|minimalista|performance|rendimiento)\b.*\b(?:desktop|escritorio|preset|mode|modo|style|estilo)\b",
+            r"\b(?:focus mode|focus preset|modo foco|preset foco)\b",
+        )
+        global_opacity = re.search(r"\b(?:opacity|opaque|opacidad)\b", lowered) and re.search(r"\b(?:active|inactive|fullscreen|pantalla completa|global|all|every|activas?|inactivas?|todas?)\b", lowered)
+        global_transparency = re.search(r"\b(?:transparent|transparente)\b", lowered) and re.search(r"\b(?:all|every|global|inactive|todas?|inactivas?)\b", lowered)
+        dim_inactive = re.search(r"\b(?:dim|dimming|atenu(?:a|á|ar|aci[oó]n))\b", lowered) and re.search(r"\b(?:inactive|inactivas?)\b", lowered)
+        preset = re.search(r"\b(?:compact|compacto|compacta|spacious|airy|espacioso|espaciosa|amplio|amplia|minimal|minimalist|minimalista|performance|rendimiento|low power|bajo consumo|focus|foco)\b", lowered) and re.search(r"\b(?:desktop|escritorio|preset|mode|modo|style|estilo)\b", lowered)
+        if any(re.search(pattern, lowered) for pattern in style_patterns) or global_opacity or global_transparency or dim_inactive or preset:
+            return "hyprland_style"
         routes = (
             ("screenrecord_stop", r"\b(?:stop|finish|end|deten(?:e|é)|termin(?:a|á))\b.*\b(?:screen\s*record(?:ing)?|recording|grabaci[oó]n)\b"),
             ("screenrecord_start", r"\b(?:screen\s*record(?:ing)?|record(?:ing)?\s+(?:the\s+)?(?:whole\s+|full\s+)?screen|grab(?:a|á|ar).*pantalla)\b"),

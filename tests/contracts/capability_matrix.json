@@ -5,6 +5,7 @@
     {"id":"workspace_focus","backend":"hyprctl","requirements":["hyprctl:eval"],"tiers":["unit","semantic","live"],"reversible":true},
     {"id":"theme_set","backend":"omarchy","requirements":["omarchy theme list","omarchy theme current","omarchy theme set"],"tiers":["unit","semantic"],"reversible":true},
     {"id":"window_rounding","backend":"hyprctl","requirements":["hyprctl:eval","hyprctl:getoption"],"tiers":["unit","semantic","live"],"reversible":true},
+    {"id":"hyprland_style","backend":"hyprctl","requirements":["hyprctl:eval","hyprctl:getoption"],"tiers":["unit","semantic","live"],"reversible":true},
     {"id":"background_next","backend":"omarchy","requirements":["omarchy theme bg next"],"tiers":["unit","semantic"],"reversible":false},
     {"id":"nightlight_toggle","backend":"omarchy","requirements":["omarchy toggle nightlight"],"tiers":["unit","semantic"],"reversible":true},
     {"id":"dnd_toggle","backend":"omarchy","requirements":["omarchy toggle notification silencing"],"tiers":["unit","semantic"],"reversible":true},

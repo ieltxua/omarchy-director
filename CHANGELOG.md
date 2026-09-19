@@ -5,7 +5,11 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- Add an exhaustive 243-phrase bilingual semantic suite covering 56 behavior
+- Add typed, reversible global Hyprland styling for gaps, border size, opacity,
+  blur, shadows, inactive-window dimming, animations, and five composable presets.
+- Restrict visual configuration to a bounded property registry, verify every live
+  effect, and automatically restore the observed values when verification fails.
+- Add an exhaustive 331-phrase bilingual semantic suite covering 78 behavior
   families, exact plan parameters, automatic-execution policy, ambiguity, and
   unsupported or unsafe near-misses.
 - Add installed-API auditing across 445 Omarchy commands and Hyprland's command
@@ -17,8 +21,9 @@ this project uses [Semantic Versioning](https://semver.org/).
   idle, lock, and window-rounding phrases.
 - Reject screen OCR and external messaging explicitly instead of allowing them
   to collide with screenshot planning.
-- Record release-gate results: 243/243 semantic cases, 20/20 capability mappings,
-  10,000 generated desktop cases, and 9/10 headless live compositor cases; exact
+- Record release-gate results: 21/21 capability mappings and more than 5,000
+  generated desktop cases; the exhaustive semantic and expanded live compositor
+  gates are rerun for each candidate, and exact
   focus remains an input-seat acceptance gap.
 
 ## [2.1.0-rc.5] - 2026-09-19

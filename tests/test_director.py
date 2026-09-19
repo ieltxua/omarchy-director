@@ -56,6 +56,9 @@ class DirectorTests(unittest.TestCase):
    "switch audio output":"audio_output_switch", "let the PC idle":"allow_idle",
    "do not let the PC sleep":"stay_awake",
    "make all window borders rounded":"window_rounding",
+   "remove all window gaps":"hyprland_style",
+   "enable inactive window dimming at 20%":"hyprland_style",
+   "aplicá el preset de escritorio compacto":"hyprland_style",
   }
   for query,capability in examples.items():
    with self.subTest(query=query): self.assertEqual(Director._explicit_native_capability(query),capability)

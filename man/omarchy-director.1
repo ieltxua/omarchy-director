@@ -103,6 +103,10 @@ the hard safety policy rejects.
 omarchy-director plan --query 'move all terminals to workspace 3'
 omarchy-director plan --query 'make X 20% smaller'
 omarchy-director plan --query 'move X to the left'
+omarchy-director plan --query 'set all window gaps to 12 pixels'
+omarchy-director plan --query 'set inactive window opacity to 80 percent'
+omarchy-director plan --query 'turn off blur, shadows and animations'
+omarchy-director plan --query 'apply the compact desktop preset'
 omarchy-director diagnostics --limit 20
 omarchy-director scenes save --name deep-work
 omarchy-director scenes apply --name deep-work
@@ -169,6 +173,12 @@ Omarchy plugins are unsandboxed code running as the current user. Review the
 plugin before enabling it. Director does not use sudo, accept arbitrary shell,
 or transmit credentials. It collects no telemetry. Jev confidence is evidence,
 never authority; YOLO cannot bypass hard safety validation.
+.PP
+Global Hyprland styling is limited to typed, bounded appearance settings: gaps,
+border size, opacity, rounding, blur, shadows, inactive-window dimming, and
+animations. Director reads the live value before mutation, verifies the result,
+and records an exact inverse. It does not accept arbitrary Hyprland keys, Lua,
+shell, monitor, input, or window-rule configuration.
 .PP
 Undo is best effort against live external state. It does not close newly
 launched applications or delete screenshot, recording, or reminder artifacts.

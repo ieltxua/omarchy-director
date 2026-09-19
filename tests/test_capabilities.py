@@ -92,6 +92,60 @@ class NativeCapabilitiesTests(unittest.TestCase):
         self.assertEqual(native.build_step("window_rounding", "make every window square").params["rounding"], 0)
         self.assertEqual(native.build_step("window_rounding", "round corners to 99 px").params["rounding"], 32)
 
+    def test_hyprland_style_is_typed_verified_and_reversible(self):
+        reads = iter(('5 5 5 5', '14 14 14 14'))
+        def run(argv, **kwargs):
+            if argv[:3] == ["hyprctl", "-j", "getoption"]:
+                return Result(f'{{"str":"{next(reads)}"}}')
+            return Result("ok\n")
+        runner = Mock(side_effect=run); native = NativeCapabilities(runner)
+        step = native.build_step("hyprland_style", "set outer gaps to 14 pixels")
+        self.assertEqual(step.params["changes"], {"gaps_out": 14})
+        result = native.execute(step)
+        self.assertEqual(result.undo_step.params["changes"], {"gaps_out": 5})
+        self.assertIn(
+            ["hyprctl", "-r", "eval", "hl.config({ general = { gaps_out = 14 } })"],
+            [call.args[0] for call in runner.call_args_list],
+        )
+
+    def test_hyprland_style_supports_compound_changes_and_presets(self):
+        native = NativeCapabilities(Mock())
+        compound = native.build_step("hyprland_style", "turn off blur, shadows and animations")
+        self.assertEqual(compound.params["changes"], {
+            "blur_enabled": False, "shadow_enabled": False, "animations_enabled": False,
+        })
+        preset = native.build_step("hyprland_style", "apply the compact desktop preset")
+        self.assertEqual(preset.params["changes"], {
+            "gaps_in": 3, "gaps_out": 6, "border_size": 1, "rounding": 4,
+        })
+        opacity = native.build_step("hyprland_style", "make all inactive windows 80% opaque")
+        self.assertEqual(opacity.params["changes"], {"inactive_opacity": 0.8})
+        dim = native.build_step("hyprland_style", "activá la atenuación de inactivas al 20%")
+        self.assertEqual(dim.params["changes"], {"dim_inactive": True, "dim_strength": 0.2})
+
+    def test_hyprland_style_rejects_unknown_or_unobservable_settings(self):
+        native = NativeCapabilities(Mock(return_value=Result('{}')))
+        with self.assertRaises(CapabilityError):
+            native.build_step("hyprland_style", "change the Hyprland config")
+        step = native.build_step("hyprland_style", "enable blur")
+        with self.assertRaisesRegex(CapabilityError, "no voy a cambiarlo sin poder deshacer"):
+            native.execute(step)
+        with self.assertRaisesRegex(CapabilityError, "Separá los efectos"):
+            native.build_step("hyprland_style", "enable blur and disable shadows")
+
+    def test_hyprland_style_rolls_back_if_effect_cannot_be_verified(self):
+        reads = iter(('5 5 5 5', '6 6 6 6', '5 5 5 5'))
+        def run(argv, **kwargs):
+            if argv[:3] == ["hyprctl", "-j", "getoption"]:
+                return Result(f'{{"str":"{next(reads)}"}}')
+            return Result("ok\n")
+        runner = Mock(side_effect=run); native = NativeCapabilities(runner)
+        step = native.build_step("hyprland_style", "set outer gaps to 14 pixels")
+        with self.assertRaisesRegex(CapabilityError, "no aplicó correctamente"):
+            native.execute(step)
+        evals = [call.args[0] for call in runner.call_args_list if call.args[0][:3] == ["hyprctl", "-r", "eval"]]
+        self.assertEqual(evals[-1], ["hyprctl", "-r", "eval", "hl.config({ general = { gaps_out = 5 } })"])
+
 
 if __name__ == "__main__":
     unittest.main()
