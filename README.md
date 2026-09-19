@@ -329,6 +329,7 @@ journalctl --user --since '10 minutes ago' | grep -i director
 ```bash
 ./tests/director-lab fast
 ./tests/director-lab stress
+./tests/director-lab api-audit --report ~/.local/state/omarchy-director/api-audit.json
 ```
 
 The fast suite runs unit, policy, voice-adapter, packaging, Python compile, JSON,
@@ -348,9 +349,20 @@ portable GitHub job:
 # Real pinned Jev; plans against a synthetic desktop and never executes them.
 ./tests/director-lab semantic --report ~/.local/state/omarchy-director/semantic-report.json
 
+# Exhaustive 242-phrase bilingual capability, paraphrase, ambiguity, and
+# unsupported-action corpus. Defaults to 90 requests/minute.
+./tests/director-lab semantic-all --report ~/.local/state/omarchy-director/semantic-all-report.json
+
 # Real Omarchy/Hyprland; owns only two Foot fixtures on reserved workspaces 91-92.
 ./tests/director-lab live --report ~/.local/state/omarchy-director/e2e-report.json
 ```
+
+`semantic-all` reports semantic and infrastructure failures separately. It retries
+one transient gateway failure by default, records recovered cases, and never retries
+a semantic mismatch. During development, repeat `--id-prefix FAMILY` to run only
+affected families without changing their order. `api-audit` inventories the installed
+Omarchy and Hyprland command surfaces, verifies every supported capability mapping,
+and lists available-but-unimplemented opportunities and explicit policy exclusions.
 
 The live runner aborts if its workspaces are occupied or stale fixtures exist,
 checks the effect and exact undo after every case, kills only processes it started,
@@ -358,7 +370,7 @@ and restores the previously focused workspace. On Omarchy the fast suite also
 invokes the native plugin validator. A stable release requires all four gates plus
 bar, F10, and one real microphone smoke test when voice behavior changed.
 
-The RC5 headless acceptance run passes 9 of 10 live compositor cases. Exact window
+The current headless acceptance run passes 9 of 10 live compositor cases. Exact window
 focus is the remaining acceptance gap: the typed Hyprland dispatcher returns
 success and the target workspace is selected, but a compositor session without
 an active input seat does not update `activewindow`. Validate focus once through
