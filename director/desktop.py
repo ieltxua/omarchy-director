@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import configparser
 import os
+import subprocess
 from pathlib import Path
 
 
@@ -27,9 +28,23 @@ def desktop_entries(home: str | None = None) -> dict[str, dict[str, str]]:
     return result
 
 
-def launch(desktop_id: str, entries: dict[str, dict[str, str]], runner) -> None:
+def launch(desktop_id: str, entries: dict[str, dict[str, str]], spawner=subprocess.Popen) -> None:
     if desktop_id not in entries:
         raise ValueError("desktop entry is not allowlisted")
-    completed = runner(["gtk-launch", desktop_id], capture_output=True, text=True, check=False)
-    if completed.returncode:
-        raise RuntimeError(completed.stderr.strip() or "gtk-launch failed")
+    # GUI applications may keep gtk-launch's pipes open for their entire
+    # lifetime. Detach all standard streams so planning can continue to window
+    # discovery instead of waiting until the application exits.
+    process = spawner(
+        ["gtk-launch", desktop_id],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+    )
+    try:
+        returncode = process.wait(timeout=0.1)
+    except subprocess.TimeoutExpired:
+        return
+    if isinstance(returncode, int) and returncode != 0:
+        raise RuntimeError(f"gtk-launch failed with status {returncode}")

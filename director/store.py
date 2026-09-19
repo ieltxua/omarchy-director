@@ -52,7 +52,20 @@ class Store:
         self._write("plans.json", plans)
 
     def get_plan(self, token: str) -> dict[str, Any] | None:
-        return self._read("plans.json", {}).get(token)
+        plan = self._read("plans.json", {}).get(token)
+        if not isinstance(plan, dict) or float(plan.get("created_at", 0)) < time.time() - 600:
+            return None
+        return plan
+
+    def plans(self) -> list[dict[str, Any]]:
+        plans = self._read("plans.json", {})
+        if not isinstance(plans, dict):
+            return []
+        cutoff = time.time() - 600
+        return sorted(
+            (deepcopy(plan) for plan in plans.values() if isinstance(plan, dict) and float(plan.get("created_at", 0)) >= cutoff),
+            key=lambda plan: float(plan.get("created_at", 0)),
+        )
 
     def remove_plan(self, token: str) -> None:
         plans = self._read("plans.json", {})

@@ -39,6 +39,10 @@ Undo the most recent reversible execution once.
 .BI "history [--limit " number ]
 Print bounded execution history.
 .TP
+.BI "diagnostics [--limit " number ]
+Print recent plan decisions, rejections, gateway failures, and compact execution
+history without window snapshots.
+.TP
 .B scenes list
 List durable named scenes.
 .TP
@@ -63,6 +67,8 @@ Persist an absolute Jev gateway Unix-socket path with user-only permissions.
 .EX
 omarchy-director plan --query 'move all terminals to workspace 3'
 omarchy-director plan --query 'make X 20% smaller'
+omarchy-director plan --query 'move X to the left'
+omarchy-director diagnostics --limit 20
 omarchy-director scenes save --name deep-work
 omarchy-director scenes apply --name deep-work
 omarchy-director configure --jev-socket /run/user/1000/jev-gateway/jev.sock

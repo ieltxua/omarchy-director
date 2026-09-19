@@ -9,6 +9,15 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 - Reversible, bounded resizing for one clearly identified window, including
   natural references such as `make X smaller` and `make this window 20% larger`.
+- Reversible directional swaps such as `move X to the left`.
+- Exact installed-app launch and placement such as `open Slack on workspace 2`.
+- Local diagnostics for recent plans, rejections, gateway failures, and history.
+
+### Fixed
+
+- GUI launches detach inherited pipes so Electron applications cannot leave
+  Director waiting for the application to exit.
+- Exact installed app names no longer depend on a probabilistic app-selection vote.
 
 ## [2.0.0] - 2026-09-19
 

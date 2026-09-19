@@ -22,6 +22,8 @@ class Step:
         if self.operation == "workspace_focus": return f"Ir al workspace {self.workspace}"
         if self.operation == "window_state": return str(self.params.get("summary") or f"Cambiar {subject}")
         if self.operation == "window_resize": return str(self.params.get("summary") or f"Redimensionar {subject}")
+        if self.operation == "window_swap": return str(self.params.get("summary") or f"Mover {subject}")
+        if self.operation == "place_launch": return str(self.params.get("summary") or f"Ubicar {subject}")
         if self.operation == "native": return str(self.params.get("summary") or subject or "Acción de Omarchy")
         if self.operation == "scene_save": return f"Guardar la escena {subject}"
         if self.operation == "scene_apply": return f"Restaurar la escena {subject}"

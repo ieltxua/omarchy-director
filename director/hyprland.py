@@ -159,3 +159,18 @@ class Hyprland:
                     self.focus_window(active_address)
                 except HyprlandError:
                     pass
+
+    def swap_window(self, address: str, direction: str) -> None:
+        if direction not in {"l", "r", "u", "d"}:
+            raise HyprlandError("invalid swap direction")
+        active = self.json("activewindow")
+        active_address = str(active.get("address", "")) if isinstance(active, dict) else ""
+        self.focus_window(address)
+        try:
+            self.eval_dispatch(f"hl.dsp.window.swap({{ direction = {json.dumps(direction)} }})")
+        finally:
+            if active_address and active_address.lower() != self._address(address):
+                try:
+                    self.focus_window(active_address)
+                except HyprlandError:
+                    pass

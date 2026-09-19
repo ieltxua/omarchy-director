@@ -100,6 +100,8 @@ Open the palette and speak or type normally:
 move all terminals to workspace 3
 make X 20% smaller
 make the current window larger
+move X to the left
+open Slack on workspace 2
 put Slack and Chromium side by side
 take me to X
 float ChatGPT
@@ -128,6 +130,7 @@ addresses.
 ```bash
 omarchy-director status
 omarchy-director plan --query 'put X and ChatGPT side by side'
+omarchy-director diagnostics --limit 20
 omarchy-director undo
 omarchy-director history --limit 10
 

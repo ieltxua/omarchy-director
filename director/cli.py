@@ -25,6 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     executing = commands.add_parser("execute", help="execute a prepared plan token"); executing.add_argument("--token", required=True)
     commands.add_parser("undo", help="undo the latest reversible execution")
     history = commands.add_parser("history", help="show bounded execution history"); history.add_argument("--limit", type=int, default=20)
+    diagnostics = commands.add_parser("diagnostics", help="show recent plans, failures, and execution summaries"); diagnostics.add_argument("--limit", type=int, default=20)
     scenes = commands.add_parser("scenes", help="manage durable semantic scenes"); scene_commands = scenes.add_subparsers(dest="scene_command", required=True)
     scene_commands.add_parser("list", help="list saved scenes")
     for action in ("save", "update", "delete", "apply"):
@@ -56,6 +57,13 @@ def main(argv: list[str] | None = None) -> int:
             elif args.command == "execute": result = {"ok": True, **director.execute(args.token)}
             elif args.command == "undo": result = {"ok": True, **director.undo()}
             elif args.command == "history": result = {"ok": True, "items": director.store.history()[-max(0, args.limit):]}
+            elif args.command == "diagnostics":
+                limit = max(0, args.limit)
+                recent_plans = director.store.plans()[-limit:] if limit else []
+                recent_history = director.store.history()[-limit:] if limit else []
+                plans = [{key: plan.get(key) for key in ("created_at", "query", "confidence", "executable", "summary", "warnings", "steps")} for plan in recent_plans]
+                history = [{key: item.get(key) for key in ("at", "summary", "undo_of")} for item in recent_history]
+                result = {"ok": True, "plans": plans, "history": history}
             elif args.scene_command == "list": result = {"ok": True, "items": director.scene_manager.list()}
             elif args.scene_command == "save": result = {"ok": True, "scene": director._capture_named_scene(args.name, False)}
             elif args.scene_command == "update": result = {"ok": True, "scene": director._capture_named_scene(args.name, True)}
