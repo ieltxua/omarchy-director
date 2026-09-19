@@ -14,7 +14,7 @@ Prompt text is never executed as shell.
 - **Address-free restore:** scenes match semantic window identity instead of stale
   Hyprland addresses and can launch identifiable missing applications.
 - **Composition:** say `float ChatGPT and save as review` in one request.
-- **Native control:** focus, move, tile, float, fullscreen, launch, themes, audio,
+- **Native control:** focus, move, resize, tile, float, fullscreen, launch, themes, audio,
   brightness, night light, notification silencing, capture, reminders, and lock.
 - **Real undo:** restores observed window, workspace, scene, theme, volume, and
   brightness state instead of blindly issuing the opposite command.
@@ -98,6 +98,8 @@ Open the palette and speak or type normally:
 
 ```text
 move all terminals to workspace 3
+make X 20% smaller
+make the current window larger
 put Slack and Chromium side by side
 take me to X
 float ChatGPT

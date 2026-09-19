@@ -14,7 +14,7 @@ class CapabilityError(RuntimeError):
 
 
 CAPABILITY_CRITERIA = {
-    "window_action": "Focus, move, gather, tile, float, tile, or fullscreen existing windows, or launch desktop applications",
+    "window_action": "Focus, move, gather, tile, float, resize, or fullscreen existing windows, or launch desktop applications",
     "workspace_focus": "Switch the visible desktop directly to a numbered workspace without moving windows",
     "theme_set": "Apply a specifically named installed Omarchy theme",
     "background_next": "Cycle to the next background in the current theme",

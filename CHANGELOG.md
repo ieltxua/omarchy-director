@@ -5,6 +5,11 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Reversible, bounded resizing for one clearly identified window, including
+  natural references such as `make X smaller` and `make this window 20% larger`.
+
 ## [2.0.0] - 2026-09-19
 
 ### Added

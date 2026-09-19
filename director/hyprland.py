@@ -111,3 +111,51 @@ class Hyprland:
         self.eval_dispatch(
             f"hl.dsp.window.resize({{ x = {size[0]}, y = {size[1]}, relative = false, window = hl.get_window({json.dumps(selector)}) }})"
         )
+
+    def resize_window(self, address: str, width: int, height: int) -> None:
+        selector = f"address:{self._address(address)}"
+        if not isinstance(width, int) or not isinstance(height, int) or not 160 <= width <= 8192 or not 120 <= height <= 8192:
+            raise HyprlandError("invalid window size")
+        client = self._client(address)
+        if bool(client.get("floating")):
+            self.eval_dispatch(
+                f"hl.dsp.window.resize({{ x = {width}, y = {height}, relative = false, window = hl.get_window({json.dumps(selector)}) }})"
+            )
+            return
+
+        at, size = client.get("at"), client.get("size")
+        if not isinstance(at, list) or not isinstance(size, list) or len(at) != 2 or len(size) != 2 or not all(isinstance(value, int) for value in [*at, *size]):
+            raise HyprlandError("window geometry is unavailable")
+        workspace = client.get("workspace", {})
+        workspace_id = workspace.get("id") if isinstance(workspace, dict) else None
+        peers = [
+            item for item in self.json("clients")
+            if not bool(item.get("floating"))
+            and isinstance(item.get("workspace"), dict)
+            and item["workspace"].get("id") == workspace_id
+            and isinstance(item.get("at"), list)
+            and isinstance(item.get("size"), list)
+            and len(item["at"]) == 2
+            and len(item["size"]) == 2
+        ]
+        if not peers:
+            raise HyprlandError("tiled window has no layout geometry")
+        left = min(item["at"][0] for item in peers)
+        top = min(item["at"][1] for item in peers)
+        right = max(item["at"][0] + item["size"][0] for item in peers)
+        bottom = max(item["at"][1] + item["size"][1] for item in peers)
+        target_right = at[0] + size[0] / 2 >= (left + right) / 2
+        target_bottom = at[1] + size[1] / 2 >= (top + bottom) / 2
+        x_delta = size[0] - width if target_right else width - size[0]
+        y_delta = size[1] - height if target_bottom else height - size[1]
+        active = self.json("activewindow")
+        active_address = str(active.get("address", "")) if isinstance(active, dict) else ""
+        self.focus_window(address)
+        try:
+            self.eval_dispatch(f"hl.dsp.window.resize({{ x = {x_delta}, y = {y_delta}, relative = true }})")
+        finally:
+            if active_address and active_address.lower() != self._address(address):
+                try:
+                    self.focus_window(active_address)
+                except HyprlandError:
+                    pass

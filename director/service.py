@@ -13,7 +13,7 @@ from .models import Plan, Step
 from .scenes import SceneManager, capture_scene, match_window_specs, normalize_scene_name
 from .store import Store
 
-OPERATIONS = ("focus", "launch", "move", "arrange", "launch_arrange", "float", "tile", "fullscreen_on", "fullscreen_off", "keep", "no_match")
+OPERATIONS = ("focus", "launch", "move", "arrange", "launch_arrange", "float", "tile", "fullscreen_on", "fullscreen_off", "resize_smaller", "resize_larger", "keep", "no_match")
 LAYOUTS = ("tile", "keep", "no_match")
 WORKSPACE_VIEWS = ("stay", "switch", "no_match")
 MAX_WINDOWS, MAX_APPS, MIN_CONFIDENCE = 12, 12, 0.80
@@ -114,10 +114,10 @@ class Director:
         warnings = [f"No podré reabrir {len(unavailable)} ventanas sin una app identificable"] if unavailable else []
         return self._store_plan(Plan(secrets.token_urlsafe(24), query, 1, f"Restaurar {key}: {detail}", [Step("scene_apply", key, label=key, params={"summary": f"Restaurar escena {key}"})], warnings, True, time.time(), snapshot))
 
-    def _questions(self, clients: dict[str, dict[str, Any]], apps: dict[str, dict[str, str]], workspace_options: list[str], ranked_apps: list[str], themes: list[str]) -> dict[str, dict[str, Any]]:
+    def _questions(self, clients: dict[str, dict[str, Any]], apps: dict[str, dict[str, str]], workspace_options: list[str], ranked_apps: list[str], themes: list[str], active_address: str | None = None) -> dict[str, dict[str, Any]]:
         questions = {
             "capability": _choice("Route the request to exactly one supported native desktop capability. Choose window_action for application/window manipulation and launching.", CAPABILITY_CRITERIA),
-            "intent": _choice("Classify the requested safe window action. Do not use whether the user wants to follow a destination workspace to distinguish actions; workspace_view decides that separately.", {"focus": "Focus one existing selected window only", "launch": "Open selected allowlisted apps only", "move": "Relocate selected existing windows to a destination workspace without imposing a layout; includes poner, mover, mandar, llevar, aislar, or dejar solo", "arrange": "Gather selected existing windows onto a workspace and explicitly tile them together; juntar, ordenar, acomodar, or lado a lado implies this", "launch_arrange": "Open selected allowlisted apps then tile their identified new windows", "float": "Make selected existing windows floating", "tile": "Make selected existing windows tiled", "fullscreen_on": "Put selected existing windows into fullscreen", "fullscreen_off": "Exit fullscreen for selected existing windows", "keep": "No window action requested", "no_match": "Request is unclear or unsupported"}),
+            "intent": _choice("Classify the requested safe window action. Do not use whether the user wants to follow a destination workspace to distinguish actions; workspace_view decides that separately.", {"focus": "Focus one existing selected window only", "launch": "Open selected allowlisted apps only", "move": "Relocate selected existing windows to a destination workspace without imposing a layout; includes poner, mover, mandar, llevar, aislar, or dejar solo", "arrange": "Gather selected existing windows onto a workspace and explicitly tile them together; juntar, ordenar, acomodar, or lado a lado implies this", "launch_arrange": "Open selected allowlisted apps then tile their identified new windows", "float": "Make selected existing windows floating", "tile": "Make selected existing windows tiled", "fullscreen_on": "Put selected existing windows into fullscreen", "fullscreen_off": "Exit fullscreen for selected existing windows", "resize_smaller": "Make exactly one selected existing window smaller, shrink it, or reduce its size", "resize_larger": "Make exactly one selected existing window larger, grow it, or increase its size", "keep": "No window action requested", "no_match": "Request is unclear or unsupported"}),
             "layout": _choice("For arrange, choose tile by default when windows should be gathered, joined, ordered, or side by side; otherwise keep/no_match.", {"tile": "Use Hyprland native tiled split", "keep": "Do not change layout", "no_match": "No layout can be safely inferred"}),
             "workspace": _choice("Choose the requested destination workspace or keep.", {option: f"Use {option}" for option in workspace_options}),
             "workspace_view": _choice("If windows are relocated, decide whether the user explicitly asks to follow them or switch the visible workspace.", {"stay": "Only put, move, send, or place windows there; do not change the user's current view", "switch": "Explicitly asks to go there, take me there, show the result, isolate, or leave me alone with the selected windows", "no_match": "The requested view behavior cannot be inferred"}),
@@ -125,7 +125,7 @@ class Director:
         }
         for address in sorted(clients)[:MAX_WINDOWS]:
             client = clients[address]
-            questions[f"window:{address}"] = {"type": "noul", "instructions": f"Does the request refer to this specific window? address={address}; class={str(client.get('class', ''))[:80]}; title={str(client.get('title', ''))[:120]}; workspace={client.get('workspace', {}).get('id')}", "criteria": {"true": "The request selects this window, including a clear plural/group reference", "false": "The request does not select this window"}}
+            questions[f"window:{address}"] = {"type": "noul", "instructions": f"Does the request refer to this specific window? address={address}; class={str(client.get('class', ''))[:80]}; title={str(client.get('title', ''))[:120]}; workspace={client.get('workspace', {}).get('id')}; active={address == active_address}", "criteria": {"true": "The request selects this window, including a clear plural/group reference or a reference to the active/current window", "false": "The request does not select this window"}}
         for desktop_id in ranked_apps:
             questions[f"app:{desktop_id}"] = {"type": "noul", "instructions": f"Does the request ask to launch allowlisted app {desktop_id}?", "criteria": {"true": "Selected", "false": "Not selected"}}
         return questions
@@ -148,6 +148,24 @@ class Director:
         if strong:
             return strong[:MAX_APPS]
         return [app_id for app_id, _ in ranked[:MAX_APPS]]
+
+    @staticmethod
+    def _explicit_window(query: str, clients: dict[str, dict[str, Any]], active_address: str | None) -> str | None:
+        lowered = query.casefold()
+        if active_address and re.search(r"\b(?:this|current|active|esta|este|actual)\s+(?:window|app|ventana|aplicaci[oó]n)\b", lowered):
+            return active_address if active_address in clients else None
+        stop = {"a", "an", "app", "can", "could", "el", "la", "larger", "make", "me", "más", "please", "podés", "smaller", "the", "un", "una", "ventana", "window", "you"}
+        tokens = {token for token in re.findall(r"[a-z0-9]+", lowered) if token not in stop}
+        if not tokens:
+            return None
+        scores: dict[str, int] = {}
+        for address, client in clients.items():
+            identity = f"{client.get('class', '')} {client.get('title', '')}".casefold()
+            identity_tokens = set(re.findall(r"[a-z0-9]+", identity))
+            scores[address] = len(tokens & identity_tokens)
+        best = max(scores.values(), default=0)
+        matches = [address for address, score in scores.items() if score == best and score > 0]
+        return matches[0] if len(matches) == 1 else None
 
     def plan(self, query: str) -> Plan:
         scene_plan = self._scene_query_plan(query)
@@ -175,9 +193,10 @@ class Director:
         create = max(existing, default=0) + 1
         workspace_options = ["keep", "no_match", "next_empty", *(f"workspace:{number}" for number in existing[:12]), f"create:{create}"]
         ranked_apps = self._rank_apps(query, apps)
-        safe_state = {"request": query[:500], "windows": [{"address": address, "title": str(client.get("title", ""))[:120], "class": str(client.get("class", ""))[:80], "workspace": client.get("workspace", {}).get("id")} for address, client in sorted(clients.items())[:MAX_WINDOWS]], "apps": [{"id": app, "name": apps[app]["name"]} for app in ranked_apps], "workspaces": workspace_options, "themes": themes}
+        active_address = str(state.get("active", {}).get("address", "")) or None
+        safe_state = {"request": query[:500], "windows": [{"address": address, "title": str(client.get("title", ""))[:120], "class": str(client.get("class", ""))[:80], "workspace": client.get("workspace", {}).get("id"), "size": client.get("size"), "active": address == active_address} for address, client in sorted(clients.items())[:MAX_WINDOWS]], "apps": [{"id": app, "name": apps[app]["name"]} for app in ranked_apps], "workspaces": workspace_options, "themes": themes}
         try:
-            answers = self.jev.decide(safe_state, self._questions(clients, apps, workspace_options, ranked_apps, themes))
+            answers = self.jev.decide(safe_state, self._questions(clients, apps, workspace_options, ranked_apps, themes, active_address))
         except JevError as exc:
             return Plan(secrets.token_urlsafe(24), query, 0, "No action planned", [], [str(exc)], False, time.time())
         capability, capability_confidence = _answer_choice(answers, "capability")
@@ -194,14 +213,18 @@ class Director:
         window_threshold = 0.65 if confidence >= 0.75 and (intent not in {"move", "arrange"} or workspace_confidence >= 0.85) else 0.85
         app_threshold = 0.50 if named_launch else 0.85
         windows = _selected_noul(answers, "window", sorted(clients)[:MAX_WINDOWS], window_threshold)
+        explicit_window = self._explicit_window(query, clients, active_address)
+        if explicit_window and intent in {"focus", "resize_smaller", "resize_larger"}:
+            windows = [explicit_window]
         selected_apps = _selected_noul(answers, "app", ranked_apps, app_threshold)
         warnings: list[str] = []
         if intent not in OPERATIONS or intent in {"keep", "no_match"}: warnings.append("No pude identificar una acción compatible")
         single_window_focus = intent == "focus" and len(windows) == 1
         intent_threshold = 0.65 if single_window_focus else (0.40 if named_launch else MIN_CONFIDENCE)
         if confidence < intent_threshold: warnings.append("La intención no alcanzó la confianza necesaria")
-        if intent in {"focus", "move", "arrange", "float", "tile", "fullscreen_on", "fullscreen_off"} and not windows: warnings.append("Ninguna ventana coincidió con suficiente confianza")
+        if intent in {"focus", "move", "arrange", "float", "tile", "fullscreen_on", "fullscreen_off", "resize_smaller", "resize_larger"} and not windows: warnings.append("Ninguna ventana coincidió con suficiente confianza")
         if intent == "focus" and len(windows) > 1: warnings.append("Necesito una sola ventana para cambiar el foco")
+        if intent in {"resize_smaller", "resize_larger"} and len(windows) > 1: warnings.append("Necesito una sola ventana para cambiar el tamaño")
         if intent in {"launch", "launch_arrange"} and not selected_apps: warnings.append("Ninguna aplicación coincidió con suficiente confianza")
         workspace = None
         if intent in {"move", "arrange"}:
@@ -223,6 +246,20 @@ class Director:
                 state_name = {"float": "float", "tile": "tile", "fullscreen_on": "fullscreen_on", "fullscreen_off": "fullscreen_off"}[intent]
                 label = {"float": "Hacer flotante", "tile": "Integrar al tiling", "fullscreen_on": "Pantalla completa", "fullscreen_off": "Salir de pantalla completa"}[intent]
                 steps.extend(Step("window_state", window, label=self._window_label(clients[window]), params={"state": state_name, "summary": f"{label}: {self._window_label(clients[window])}"}) for window in windows)
+            if intent in {"resize_smaller", "resize_larger"}:
+                window = windows[0]
+                size = clients[window].get("size")
+                if not isinstance(size, list) or len(size) != 2 or not all(isinstance(value, int) and value > 0 for value in size):
+                    warnings.append("No pude leer el tamaño actual de la ventana")
+                else:
+                    amount_match = re.search(r"(?<![A-Za-z0-9])(\d{1,2})\s*%", query)
+                    amount = min(50, max(1, int(amount_match.group(1)))) if amount_match else 15
+                    factor = (100 - amount) / 100 if intent == "resize_smaller" else (100 + amount) / 100
+                    width = max(160, min(8192, round(size[0] * factor)))
+                    height = max(120, min(8192, round(size[1] * factor)))
+                    verb = "Achicar" if intent == "resize_smaller" else "Agrandar"
+                    label = self._window_label(clients[window])
+                    steps.append(Step("window_resize", window, label=label, params={"width": width, "height": height, "summary": f"{verb} {label} {amount}%"}))
         if not steps:
             summary = "No hay una acción segura para ejecutar"
         elif intent == "arrange":
@@ -235,6 +272,8 @@ class Director:
             summary = f"Enfocar {self._window_label(clients[windows[0]])}"
         elif intent in {"float", "tile", "fullscreen_on", "fullscreen_off"}:
             summary = f"Cambiar el estado de {len(windows)} ventanas"
+        elif intent in {"resize_smaller", "resize_larger"}:
+            summary = steps[0].summary
         elif intent == "move" and steps and steps[0].operation == "isolate":
             summary = f"Aislar {len(windows)} ventanas en el workspace {workspace}"
         else:
@@ -335,7 +374,7 @@ class Director:
         plan = Plan.from_dict(raw)
         if not plan.executable: raise ValueError("plan is not executable")
         before = {str(c.get("address")): c for c in self.hypr.state()["clients"]}
-        targets = [step.target for step in plan.steps if step.operation in {"focus", "move", "isolate", "arrange"} and step.target]
+        targets = [step.target for step in plan.steps if step.operation in {"focus", "move", "isolate", "arrange", "window_resize"} and step.target]
         if any(target not in before for target in targets): raise ValueError("window state changed; request a new plan")
         apps, warnings, undo_steps = desktop_entries(), [], []
         self._step_warnings = []
@@ -398,6 +437,16 @@ class Director:
             elif state == "fullscreen_on": self.hypr.set_fullscreen(step.target or "", True)
             elif state == "fullscreen_off": self.hypr.set_fullscreen(step.target or "", False)
             else: raise ValueError("unknown window state")
+        elif step.operation == "window_resize":
+            client = next((item for item in self.hypr.state()["clients"] if item.get("address") == step.target), None)
+            previous = client.get("size") if isinstance(client, dict) else None
+            width, height = step.params.get("width"), step.params.get("height")
+            if not isinstance(previous, list) or len(previous) != 2 or not all(isinstance(value, int) for value in previous):
+                raise ValueError("window size is unavailable")
+            if not isinstance(width, int) or not isinstance(height, int):
+                raise ValueError("invalid resize plan")
+            self.hypr.resize_window(step.target or "", width, height)
+            return Step("window_resize", step.target, label=step.label, params={"width": previous[0], "height": previous[1], "summary": f"Restaurar tamaño de {step.label or 'ventana'}"})
         elif step.operation == "native": return self.native.execute(step).undo_step
         elif step.operation == "scene_save":
             previous = self.scene_manager.get(step.target or "")

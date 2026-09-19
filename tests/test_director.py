@@ -15,13 +15,14 @@ CLIENTS = [{"address":"0xaaa","title":"Terminal","class":"term","workspace":{"id
 class Result:
  def __init__(self, stdout="", returncode=0, stderr=""): self.stdout,self.returncode,self.stderr=stdout,returncode,stderr
 class FakeHypr:
- def __init__(self, states=None): self.runner=Mock(); self.calls=[]; self.states=states or []; self.moved={}; self.floated={}; self.workspace=1
+ def __init__(self, states=None): self.runner=Mock(); self.calls=[]; self.states=states or []; self.moved={}; self.floated={}; self.resized={}; self.workspace=1
  def state(self):
   if self.states: return self.states.pop(0)
   clients=json.loads(json.dumps(CLIENTS))
   for client in clients:
    if client["address"] in self.moved: client["workspace"]={"id":self.moved[client["address"]]}
    if client["address"] in self.floated: client["floating"]=self.floated[client["address"]]
+   if client["address"] in self.resized: client["size"]=self.resized[client["address"]]
   return {"clients":clients,"workspaces":[{"id":1,"windows":1},{"id":2,"windows":0},{"id":3,"windows":1}],"monitors":[{"focused":True,"activeWorkspace":{"id":self.workspace,"name":str(self.workspace)}}],"active":clients[0]}
  def focus_window(self,address): self.calls.append(("focus_window",address))
  def move_window(self,address,workspace,follow=False): self.calls.append(("move_window",address,workspace,follow)); self.moved[address]=workspace
@@ -29,6 +30,7 @@ class FakeHypr:
  def set_floating(self,address,floating): self.calls.append(("set_floating",address,floating)); self.floated[address]=floating
  def set_fullscreen(self,address,fullscreen): self.calls.append(("set_fullscreen",address,fullscreen))
  def restore_geometry(self,address,at,size): self.calls.append(("restore_geometry",address,at,size))
+ def resize_window(self,address,width,height): self.calls.append(("resize_window",address,width,height)); self.resized[address]=[width,height]
 class FakeJev:
  def __init__(self, answers): self.answers=answers
  def decide(self,state,questions): self.state,self.questions=state,questions; return self.answers
@@ -68,6 +70,21 @@ class DirectorTests(unittest.TestCase):
   response=answers("focus",["0xbbb"]); response["intent"]["confidence"]=.70; response["window:0xbbb"]["noul"]=.86
   plan=self.make(response).plan("take me to x app")
   self.assertTrue(plan.executable); self.assertEqual([(step.operation,step.target) for step in plan.steps],[("focus","0xbbb")])
+ def test_exact_x_resize_is_typed_bounded_and_reversible(self):
+  director=self.make(answers("resize_smaller",["0xbbb"])); plan=director.plan("can you make x 20% smaller?")
+  self.assertTrue(plan.executable); self.assertEqual((plan.steps[0].operation,plan.steps[0].params["width"],plan.steps[0].params["height"]),("window_resize",720,560))
+  director.execute(plan.token); self.assertIn(("resize_window","0xbbb",720,560),self.hypr.calls)
+  director.undo(); self.assertEqual(self.hypr.calls[-1],("resize_window","0xbbb",900,700))
+ def test_exact_x_name_is_resolved_when_jev_window_probability_varies(self):
+  old=CLIENTS[1]["title"]; CLIENTS[1]["title"]="Home / X"
+  try:
+   response=answers("resize_smaller"); response["window:0xbbb"]={"type":"noul","noul":.52}
+   plan=self.make(response).plan("can you make x smaller?")
+   self.assertTrue(plan.executable); self.assertEqual(plan.steps[0].target,"0xbbb")
+  finally: CLIENTS[1]["title"]=old
+ def test_resize_rejects_ambiguous_multiple_windows(self):
+  plan=self.make(answers("resize_larger",["0xaaa","0xbbb"])).plan("make them larger")
+  self.assertFalse(plan.executable); self.assertIn("Necesito una sola ventana para cambiar el tamaño",plan.warnings)
  def test_focus_rejects_multiple_targets_even_with_high_confidence(self):
   plan=self.make(answers("focus",["0xaaa","0xbbb"])).plan("focus the apps")
   self.assertFalse(plan.executable); self.assertTrue(any("una sola ventana" in warning for warning in plan.warnings))
@@ -201,6 +218,16 @@ class HyprTests(unittest.TestCase):
   self.assertEqual(runner.call_count,1)
   hypr.set_fullscreen("0xaaa",False)
   self.assertEqual(runner.call_count,3); self.assertIn('action = "toggle"',runner.call_args.args[0][2])
+ def test_resize_window_validates_bounds_and_uses_typed_dispatch(self):
+  clients=[{"address":"0xaaa","at":[967,38],"size":[941,1030],"floating":False,"workspace":{"id":2}},{"address":"0xbbb","at":[12,38],"size":[941,1030],"floating":False,"workspace":{"id":2}}]
+  def run(argv,**kwargs):
+   if argv[:3]==["hyprctl","-j","clients"]: return Result(json.dumps(clients))
+   if argv[:3]==["hyprctl","-j","activewindow"]: return Result(json.dumps(clients[1]))
+   return Result("ok")
+  runner=Mock(side_effect=run); hypr=Hyprland(runner); hypr.resize_window("0xAaA",800,1030)
+  evals=[call.args[0][2] for call in runner.call_args_list if call.args[0][:2]==["hyprctl","eval"]]
+  self.assertIn('x = 141, y = 0, relative = true',evals[1]); self.assertIn('address:0xaaa',evals[0]); self.assertIn('address:0xbbb',evals[2])
+  with self.assertRaisesRegex(Exception,"invalid window size"): hypr.resize_window("0xaaa",1,560)
 
 class CliTests(unittest.TestCase):
  def test_history_limit_returns_top_level_items(self):
