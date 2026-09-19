@@ -125,6 +125,13 @@ class DirectorTests(unittest.TestCase):
    plan=self.make(response).plan("llevame a X")
    self.assertTrue(plan.executable); self.assertEqual([(step.operation,step.target) for step in plan.steps],[("focus","0xbbb")])
   finally: CLIENTS[1]["title"]=old
+ def test_voice_transcription_focks_x_cannot_launch_an_existing_x_window(self):
+  old=CLIENTS[1]["title"]; CLIENTS[1]["title"]="Home / X"
+  try:
+   response=answers("launch"); response["capability"]={"type":"choice","choice":"no_match","confidence":.92,"probabilities":{}}
+   plan=self.make(response).plan("FOCKS X")
+   self.assertTrue(plan.executable); self.assertEqual([(step.operation,step.target) for step in plan.steps],[("focus","0xbbb")])
+  finally: CLIENTS[1]["title"]=old
  def test_exact_x_resize_is_typed_bounded_and_reversible(self):
   director=self.make(answers("resize_smaller",["0xbbb"])); plan=director.plan("can you make x 20% smaller?")
   self.assertTrue(plan.executable); self.assertEqual((plan.steps[0].operation,plan.steps[0].params["width"],plan.steps[0].params["height"]),("window_resize",720,560))

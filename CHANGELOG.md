@@ -5,7 +5,7 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- Add an exhaustive 242-phrase bilingual semantic suite covering 56 behavior
+- Add an exhaustive 243-phrase bilingual semantic suite covering 56 behavior
   families, exact plan parameters, automatic-execution policy, ambiguity, and
   unsupported or unsafe near-misses.
 - Add installed-API auditing across 445 Omarchy commands and Hyprland's command
@@ -17,7 +17,7 @@ this project uses [Semantic Versioning](https://semver.org/).
   idle, lock, and window-rounding phrases.
 - Reject screen OCR and external messaging explicitly instead of allowing them
   to collide with screenshot planning.
-- Record release-gate results: 242/242 semantic cases, 20/20 capability mappings,
+- Record release-gate results: 243/243 semantic cases, 20/20 capability mappings,
   10,000 generated desktop cases, and 9/10 headless live compositor cases; exact
   focus remains an input-seat acceptance gap.
 

@@ -349,7 +349,7 @@ portable GitHub job:
 # Real pinned Jev; plans against a synthetic desktop and never executes them.
 ./tests/director-lab semantic --report ~/.local/state/omarchy-director/semantic-report.json
 
-# Exhaustive 242-phrase bilingual capability, paraphrase, ambiguity, and
+# Exhaustive 243-phrase bilingual capability, paraphrase, ambiguity, and
 # unsupported-action corpus. Defaults to 90 requests/minute.
 ./tests/director-lab semantic-all --report ~/.local/state/omarchy-director/semantic-all-report.json
 

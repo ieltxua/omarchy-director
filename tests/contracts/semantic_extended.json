@@ -8,7 +8,7 @@
   },
   "cases": [],
   "families": [
-    {"id":"focus-x","expect":{"executable":true,"operations":["focus"],"targets":["0xb1"],"auto_executable":true},"queries":["take me to X","show me the X app","focus Home / X","bring X to the front","llevame a X","mostrame X"]},
+    {"id":"focus-x","expect":{"executable":true,"operations":["focus"],"targets":["0xb1"],"auto_executable":true},"queries":["take me to X","show me the X app","focus Home / X","bring X to the front","llevame a X","mostrame X","FOCKS X"]},
     {"id":"focus-chatgpt","expect":{"executable":true,"operations":["focus"],"targets":["0xc1"],"auto_executable":true},"queries":["focus ChatGPT","show me ChatGPT","take me to ChatGPT","enfocá ChatGPT","mostrame ChatGPT"]},
     {"id":"move-alpha","expect":{"executable":true,"operations":["move"],"targets":["0xa1"],"workspace":3,"auto_executable":true},"queries":["move Alpha Terminal to workspace 3","put Alpha Terminal on workspace 3","send Alpha Terminal to workspace 3","mové Alpha Terminal al workspace 3","poné Alpha Terminal en el workspace 3"]},
     {"id":"move-terminals","expect":{"executable":true,"operations":["move","move"],"targets":["0xa1","0xa2"],"workspace":3,"auto_executable":true},"queries":["move all terminals to workspace 3","put both terminals on workspace 3","send every terminal to workspace 3","mové todas las terminales al workspace 3","pone las dos terminales en el workspace 3"]},

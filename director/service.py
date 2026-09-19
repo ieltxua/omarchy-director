@@ -251,7 +251,7 @@ class Director:
         lowered = query.strip().casefold()
         if re.search(r"\b(?:workspace|left|right|up|down|izquierda|derecha|arriba|abajo)\b", lowered):
             return False
-        return bool(re.match(r"^(?:focus|show me|take me to|bring me to|go to|enfoc[aá]|mostr[aá]me|llev[aá]me a|ll[eé]vame a|ir a)\b", lowered))
+        return bool(re.match(r"^(?:focus|focks|show me|take me to|bring me to|go to|enfoc[aá]|mostr[aá]me|llev[aá]me a|ll[eé]vame a|ir a)\b", lowered))
 
     @staticmethod
     def _explicit_native_capability(query: str) -> str | None:
@@ -365,7 +365,8 @@ class Director:
         capability, capability_confidence = _answer_choice(answers, "capability")
         if capability is None: capability, capability_confidence = "window_action", 1.0
         explicit_intent = self._explicit_window_intent(query)
-        if explicit_intent:
+        explicit_focus = self._explicit_focus_query(query)
+        if explicit_intent or explicit_focus:
             capability, capability_confidence = "window_action", 1.0
         theme, theme_confidence = _answer_choice(answers, "theme")
         workspace_choice, workspace_confidence = _answer_choice(answers, "workspace")
@@ -384,7 +385,7 @@ class Director:
         windows = _selected_noul(answers, "window", sorted(clients)[:MAX_WINDOWS], window_threshold)
         explicit_window = self._aliased_window(query, clients, self.config["aliases"]["windows"]) or self._explicit_window(query, clients, active_address)
         explicit_windows = self._explicit_windows(query, clients)
-        if explicit_window and self._explicit_focus_query(query):
+        if explicit_window and explicit_focus:
             intent, confidence = "focus", max(confidence, 0.90)
         if explicit_window and intent in {"focus", "float", "tile", "fullscreen_on", "fullscreen_off", "resize_smaller", "resize_larger", "swap_left", "swap_right", "swap_up", "swap_down"}:
             windows = [explicit_window]
