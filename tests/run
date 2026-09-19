@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_dir"
+
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python3 -m unittest discover -s tests -v
+python3 -m compileall -q director
+python3 -m json.tool manifest.json >/dev/null
+bash -n install.sh uninstall.sh bin/omarchy-director bin/omarchy-director-ui bin/omarchy-director-voice
+
+if find . -type l -print -quit | grep -q .; then
+  echo "Plugin checkout contains a symlink, which Omarchy rejects" >&2
+  exit 1
+fi
+
+if command -v omarchy >/dev/null; then omarchy plugin validate "$repo_dir"; fi

@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -z "${OMARCHY_PATH:-}" ]]; then
+  OMARCHY_PATH="$(systemctl --user show-environment 2>/dev/null | sed -n 's/^OMARCHY_PATH=//p' | tail -n 1)"
+  : "${OMARCHY_PATH:=/usr/share/omarchy}"
+  export OMARCHY_PATH
+fi
+
+action="${1:-toggle}"
+[[ $# -gt 0 ]] && shift
+yolo="false"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --yolo) yolo="true"; shift ;;
+    --preview) yolo="false"; shift ;;
+    --help|-h)
+      printf '%s\n' \
+        'Usage: omarchy-director-voice [start|stop|toggle|cancel] [--yolo|--preview]' \
+        '' \
+        'Right-clicking the Director bar icon uses: toggle --yolo.'
+      exit 0
+      ;;
+    *) echo "Unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/omarchy-director"
+session_file="$runtime_dir/voice-session"
+mic_control_bin="${DIRECTOR_MIC_CONTROL_BIN:-${AIRPODS_MIC_CONTROL_BIN:-}}"
+mkdir -p "$runtime_dir"
+chmod 700 "$runtime_dir"
+
+mic_start() {
+  if [[ -n "$mic_control_bin" ]]; then
+    [[ -x "$mic_control_bin" ]] || { echo "Microphone helper is not executable: $mic_control_bin" >&2; return 1; }
+    "$mic_control_bin" start
+    sleep 1.5
+  fi
+}
+
+mic_stop() {
+  [[ -n "$mic_control_bin" ]] && "$mic_control_bin" stop || true
+}
+
+start_recording() {
+  command -v voxtype >/dev/null || { echo "Voice mode requires voxtype on PATH" >&2; exit 4; }
+  transcript="$runtime_dir/transcript-$(date +%s%N).txt"
+  printf '%s\n%s\n' "$transcript" "$yolo" >"$session_file"
+  chmod 600 "$session_file"
+  mic_start
+  if ! voxtype record start --file="$transcript" --no-osd; then
+    mic_stop
+    unlink "$session_file"
+    exit 1
+  fi
+  omarchy-shell shell call ieltxu.director open '{"voice":"recording"}'
+}
+
+stop_recording() {
+  [[ -f "$session_file" ]] || { echo "No Director voice session is active" >&2; exit 3; }
+  transcript="$(sed -n '1p' "$session_file")"
+  session_yolo="$(sed -n '2p' "$session_file")"
+  case "$transcript" in "$runtime_dir"/transcript-*.txt) ;; *) echo "Invalid transcript path" >&2; exit 1 ;; esac
+
+  result_file="$runtime_dir/voxtype-result-$$.json"
+  voxtype record stop --wait --json --timeout 120 >"$result_file" &
+  stop_pid=$!
+  sleep 0.1
+  mic_stop
+  if ! wait "$stop_pid"; then
+    omarchy-shell shell call ieltxu.director open '{"query":"","voice":"error"}' || true
+    unlink "$result_file"
+    exit 1
+  fi
+  result="$(<"$result_file")"
+  unlink "$result_file"
+  [[ -f "$transcript" ]] || { echo "$result" >&2; exit 1; }
+  query="$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$transcript")"
+  [[ -n "$query" ]] || { echo "Voxtype returned an empty transcript" >&2; exit 3; }
+
+  if [[ "$session_yolo" == "true" ]]; then
+    omarchy-director-ui --query "$query" --execute
+  else
+    omarchy-director-ui --query "$query"
+  fi
+  unlink "$transcript"
+  unlink "$session_file"
+}
+
+case "$action" in
+  start) start_recording ;;
+  stop) stop_recording ;;
+  toggle)
+    if [[ "$(voxtype status 2>/dev/null || true)" == "recording" ]]; then stop_recording; else start_recording; fi
+    ;;
+  cancel)
+    voxtype record cancel || true
+    mic_stop
+    if [[ -f "$session_file" ]]; then
+      transcript="$(sed -n '1p' "$session_file")"
+      case "$transcript" in "$runtime_dir"/transcript-*.txt) [[ -e "$transcript" ]] && unlink "$transcript" ;; esac
+      unlink "$session_file"
+    fi
+    omarchy-shell shell hide ieltxu.director || true
+    ;;
+  *) echo "Unknown action: $action" >&2; exit 2 ;;
+esac

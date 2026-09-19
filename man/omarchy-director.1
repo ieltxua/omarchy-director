@@ -1,0 +1,135 @@
+.TH OMARCHY-DIRECTOR 1 "2026-09-19" "omarchy-director 2.0.0" "User Commands"
+.SH NAME
+omarchy-director \- control an Omarchy desktop with typed natural-language plans
+.SH SYNOPSIS
+.B omarchy-director
+.RB [ --version ]
+.I command
+.RI [ options ]
+.br
+.B omarchy-director-ui
+.RB [ --query " text " ]
+.RB [ --execute ]
+.br
+.B omarchy-director-voice
+.RI [ start | stop | toggle | cancel ]
+.RB [ --preview | --yolo ]
+.SH DESCRIPTION
+Director observes live Hyprland windows, workspaces, monitors, and installed
+desktop applications. A local Jev gateway maps natural language to closed typed
+choices. Deterministic Python code validates targets and executes exact Omarchy
+or Hyprland operations.
+.PP
+Director never evaluates prompt text as shell. Plans are previewed before
+execution. Reversible state is recorded under the user's XDG state directory.
+.SH COMMANDS
+.TP
+.B status
+Print the current Director-visible desktop and saved scene names as JSON.
+.TP
+.BI "plan --query " text
+Create a bounded plan and return its token as JSON. This does not execute it.
+.TP
+.BI "execute --token " token
+Execute a previously prepared, still-valid plan.
+.TP
+.B undo
+Undo the most recent reversible execution once.
+.TP
+.BI "history [--limit " number ]
+Print bounded execution history.
+.TP
+.B scenes list
+List durable named scenes.
+.TP
+.BI "scenes save --name " name
+Capture the current desktop as an address-free semantic scene.
+.TP
+.BI "scenes update --name " name
+Replace an existing scene with the current desktop.
+.TP
+.BI "scenes apply --name " name
+Restore a scene, launching identifiable missing applications when possible.
+.TP
+.BI "scenes delete --name " name
+Delete a scene definition. The deletion can be undone from Director history.
+.TP
+.B doctor
+Check Omarchy, Hyprland session context, and the configured Jev Unix socket.
+.TP
+.BI "configure --jev-socket " path
+Persist an absolute Jev gateway Unix-socket path with user-only permissions.
+.SH EXAMPLES
+.EX
+omarchy-director plan --query 'move all terminals to workspace 3'
+omarchy-director scenes save --name deep-work
+omarchy-director scenes apply --name deep-work
+omarchy-director configure --jev-socket /run/user/1000/jev-gateway/jev.sock
+omarchy-director doctor
+omarchy-director-ui --query 'activate deep-work'
+.EE
+.SH VOICE
+Voice mode requires
+.BR voxtype (1).
+Preview mode transcribes and prepares the plan. YOLO requests automatic
+execution, but Director still requires Enter for operations without a complete
+undo boundary, including launches, screenshots, recordings, reminders, output
+switching, wallpaper changes, lock, and scene application that may launch apps.
+.PP
+Set
+.B DIRECTOR_MIC_CONTROL_BIN
+to an optional executable accepting
+.B start
+and
+.B stop
+if the microphone needs an external profile or bridge controller.
+.SH ENVIRONMENT
+.TP
+.B JEV_SOCKET_PATH
+Highest-priority Jev Unix socket. Overrides saved configuration and discovery.
+.TP
+.B XDG_CONFIG_HOME
+Configuration root. Defaults to
+.IR ~/.config .
+.TP
+.B XDG_STATE_HOME
+State root. Defaults to
+.IR ~/.local/state .
+.TP
+.B XDG_RUNTIME_DIR
+Runtime root used for socket discovery and temporary voice transcripts.
+.TP
+.B OMARCHY_PATH
+Omarchy installation root. When absent, launchers read the user-manager
+environment and finally fall back to
+.IR /usr/share/omarchy .
+.SH FILES
+.TP
+.I $XDG_CONFIG_HOME/omarchy-director/config.json
+Optional Jev socket configuration, mode 0600.
+.TP
+.I $XDG_STATE_HOME/omarchy-director/scenes.json
+Durable semantic scene definitions, mode 0600.
+.TP
+.I $XDG_STATE_HOME/omarchy-director/history.json
+Bounded execution and undo history, mode 0600.
+.TP
+.I $XDG_RUNTIME_DIR/omarchy-director/
+Ephemeral voice-session files.
+.SH SAFETY
+Omarchy plugins are unsandboxed code running as the current user. Review the
+plugin before enabling it. Director does not use sudo, accept arbitrary shell,
+or transmit credentials. Jev confidence is evidence, never authority.
+.PP
+Undo is best effort against live external state. It does not close newly
+launched applications or delete screenshot, recording, or reminder artifacts.
+.SH EXIT STATUS
+Zero indicates success. Non-zero indicates invalid arguments, unavailable
+dependencies, rejected plans, stale state, or execution failure. CLI output is
+JSON except for argparse help and version output.
+.SH SEE ALSO
+.BR hyprctl (1),
+.BR omarchy (1),
+.BR voxtype (1)
+.SH BUGS
+Report issues at https://github.com/ieltxu/omarchy-director/issues .

@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+command -v omarchy >/dev/null || { echo "This acceptance test must run on Omarchy" >&2; exit 77; }
+
+sandbox="$(mktemp -d)"
+trap 'rm -rf -- "$sandbox"' EXIT
+plugin_dir="$sandbox/config/omarchy/plugins/ieltxu.director"
+mkdir -p "$(dirname "$plugin_dir")" "$sandbox/config/hypr"
+cp -a "$repo_dir/." "$plugin_dir/"
+printf '%s\n' '-- lifecycle fixture' >"$sandbox/config/hypr/bindings.lua"
+
+env \
+  HOME="$sandbox/home" \
+  XDG_CONFIG_HOME="$sandbox/config" \
+  XDG_DATA_HOME="$sandbox/data" \
+  XDG_STATE_HOME="$sandbox/state" \
+  DIRECTOR_BIN_DIR="$sandbox/bin" \
+  HYPRLAND_INSTANCE_SIGNATURE= \
+  "$plugin_dir/install.sh"
+
+for command_name in omarchy-director omarchy-director-ui omarchy-director-voice; do
+  [[ -L "$sandbox/bin/$command_name" ]]
+done
+grep -q '^\.TH OMARCHY-DIRECTOR ' "$sandbox/data/man/man1/omarchy-director.1"
+grep -q '^X-Omarchy-Director-Managed=true$' "$sandbox/data/applications/ieltxu-director.desktop"
+! grep -q 'ieltxu.director' "$sandbox/config/hypr/bindings.lua"
+
+env \
+  HOME="$sandbox/home" \
+  XDG_CONFIG_HOME="$sandbox/config" \
+  XDG_DATA_HOME="$sandbox/data" \
+  XDG_STATE_HOME="$sandbox/state" \
+  DIRECTOR_BIN_DIR="$sandbox/bin" \
+  HYPRLAND_INSTANCE_SIGNATURE= \
+  "$plugin_dir/uninstall.sh"
+
+[[ ! -e "$sandbox/bin/omarchy-director" ]]
+[[ ! -e "$sandbox/data/applications/ieltxu-director.desktop" ]]
+[[ ! -e "$sandbox/data/man/man1/omarchy-director.1" ]]
+! grep -q 'ieltxu.director' "$sandbox/config/hypr/bindings.lua"
+
+env \
+  HOME="$sandbox/home" \
+  XDG_CONFIG_HOME="$sandbox/config" \
+  XDG_DATA_HOME="$sandbox/data" \
+  XDG_STATE_HOME="$sandbox/state" \
+  DIRECTOR_BIN_DIR="$sandbox/bin" \
+  HYPRLAND_INSTANCE_SIGNATURE= \
+  "$plugin_dir/install.sh" --voice-bindings
+grep -q '^-- BEGIN ieltxu.director$' "$sandbox/config/hypr/bindings.lua"
+
+env \
+  HOME="$sandbox/home" \
+  XDG_CONFIG_HOME="$sandbox/config" \
+  XDG_DATA_HOME="$sandbox/data" \
+  XDG_STATE_HOME="$sandbox/state" \
+  DIRECTOR_BIN_DIR="$sandbox/bin" \
+  HYPRLAND_INSTANCE_SIGNATURE= \
+  "$plugin_dir/uninstall.sh"
+! grep -q 'ieltxu.director' "$sandbox/config/hypr/bindings.lua"
+echo "Omarchy integration lifecycle passed"

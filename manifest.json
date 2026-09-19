@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "ieltxu.director",
+  "name": "Director",
+  "version": "2.0.0",
+  "author": "Ieltxu",
+  "license": "MIT",
+  "homepage": "https://github.com/ieltxu/omarchy-director",
+  "description": "A theme-native, reversible natural-language director for Hyprland windows and workspaces",
+  "kinds": [
+    "overlay",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "Director.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Director",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "left",
+    "defaults": {},
+    "schema": []
+  }
+}

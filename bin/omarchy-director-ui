@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -z "${OMARCHY_PATH:-}" ]]; then
+  OMARCHY_PATH="$(systemctl --user show-environment 2>/dev/null | sed -n 's/^OMARCHY_PATH=//p' | tail -n 1)"
+  : "${OMARCHY_PATH:=/usr/share/omarchy}"
+  export OMARCHY_PATH
+fi
+
+query=""
+execute="false"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --query)
+      [[ $# -ge 2 ]] || { echo "--query requires a value" >&2; exit 2; }
+      query="$2"
+      shift 2
+      ;;
+    --execute)
+      execute="true"
+      shift
+      ;;
+    --help|-h)
+      printf '%s\n' \
+        'Usage: omarchy-director-ui [--query TEXT] [--execute]' \
+        '' \
+        'Opens Director inside the running Omarchy shell. --execute is reserved' \
+        'for trusted transcript adapters; policy still decides whether execution' \
+        'is allowed.'
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+payload="$({ QUERY="$query" EXECUTE="$execute" python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({
+    "query": os.environ["QUERY"],
+    "execute": os.environ["EXECUTE"] == "true",
+}, ensure_ascii=False, separators=(",", ":")))
+PY
+})"
+
+exec omarchy-shell shell call ieltxu.director open "$payload"
