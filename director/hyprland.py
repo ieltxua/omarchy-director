@@ -77,6 +77,14 @@ class Hyprland:
         if isinstance(at, list) and isinstance(size, list) and len(at) == 2 and len(size) == 2 and all(isinstance(value, int) for value in [*at, *size]):
             x, y = at[0] + size[0] // 2, at[1] + size[1] // 2
             self.eval_dispatch(f"hl.dsp.cursor.move({{ x = {x}, y = {y} }})")
+        active = self.json("activewindow")
+        if not isinstance(active, dict) or str(active.get("address", "")).lower() != wanted:
+            # Hyprland 0.56 can acknowledge the Lua focus dispatcher without
+            # changing activewindow in a headless/input-seat session. Use the
+            # native compatibility dispatcher only after the postcondition fails.
+            result = self.runner(["hyprctl", "dispatch", "focuswindow", selector], capture_output=True, text=True, check=False)
+            if result.returncode:
+                raise HyprlandError(result.stderr.strip() or result.stdout.strip() or "Hyprland focus fallback failed")
 
     def move_window(self, address: str, workspace: int | str, follow: bool = False) -> None:
         selector = f"address:{self._address(address)}"

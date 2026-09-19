@@ -358,12 +358,14 @@ class HyprTests(unittest.TestCase):
  def test_focus_window_uses_typed_exact_selector(self):
   def run(argv,**kwargs):
    if argv[:3]==["hyprctl","-j","clients"]: return Result(json.dumps([{"address":"0xaaa","workspace":{"id":2},"at":[100,200],"size":[800,600]}]))
+   if argv[:3]==["hyprctl","-j","activewindow"]: return Result(json.dumps({"address":"0xbbb"}))
    return Result("ok")
   runner=Mock(side_effect=run); Hyprland(runner).focus_window("0xaaa")
   evals=[call.args[0][2] for call in runner.call_args_list if call.args[0][:2]==["hyprctl","eval"]]
   self.assertTrue(any('window = "address:0xaaa"' in value for value in evals))
   self.assertTrue(any('workspace = "2"' in value for value in evals))
   self.assertTrue(any('hl.dsp.cursor.move({ x = 500, y = 500 })' in value for value in evals))
+  self.assertTrue(any(call.args[0] == ["hyprctl","dispatch","focuswindow","address:0xaaa"] for call in runner.call_args_list))
 
 class CliTests(unittest.TestCase):
  def test_history_limit_returns_top_level_items(self):
