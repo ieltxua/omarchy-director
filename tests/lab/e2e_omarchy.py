@@ -60,6 +60,12 @@ def normalized(client: dict) -> dict:
     }
 
 
+def window_rounding() -> int:
+    result = subprocess.run(["hyprctl", "-j", "getoption", "decoration:rounding"], capture_output=True, text=True, check=True)
+    payload = json.loads(result.stdout)
+    return int(payload["int"])
+
+
 def wait_for_fixtures(hypr: Hyprland, timeout: float = 8.0) -> dict[str, dict]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -127,6 +133,7 @@ def run_case(director: Director, hypr: Hyprland, case: dict, workspace: int) -> 
         time.sleep(0.15)
     baseline_active = str(hypr.state()["active"].get("address"))
     baseline = {key: normalized(value) for key, value in fixture_clients(hypr).items()}
+    baseline_rounding = window_rounding()
     query = case["query"]
     if case["id"] == "swap":
         direction = "right" if baseline["director-e2e-alpha"]["at"][0] < baseline["director-e2e-beta"]["at"][0] else "left"
@@ -155,12 +162,15 @@ def run_case(director: Director, hypr: Hyprland, case: dict, workspace: int) -> 
         check = next((monitor.get("activeWorkspace", {}).get("id") for monitor in hypr.state()["monitors"] if monitor.get("focused")), None) == workspace + 1
     elif case["id"] in {"resize", "swap"}:
         check = normalized(current["director-e2e-alpha"]) != baseline["director-e2e-alpha"]
+    elif case["id"] == "rounding":
+        check = window_rounding() == 8
     undo = director.undo()
     time.sleep(0.15)
     restored = {key: normalized(value) for key, value in fixture_clients(hypr).items()}
     focus_restored = str(hypr.state()["active"].get("address")) == baseline_active
-    result.update({"execution": execution, "undo": undo, "effect_verified": check, "restored": restored == baseline, "focus_restored": focus_restored})
-    result["passed"] = bool(check and restored == baseline and focus_restored and not undo.get("warnings"))
+    rounding_restored = window_rounding() == baseline_rounding
+    result.update({"execution": execution, "undo": undo, "effect_verified": check, "restored": restored == baseline and rounding_restored, "focus_restored": focus_restored})
+    result["passed"] = bool(check and restored == baseline and rounding_restored and focus_restored and not undo.get("warnings"))
     if not result["passed"]:
         result["baseline"] = baseline
         result["after_undo"] = restored
@@ -200,6 +210,7 @@ def main(argv: list[str] | None = None) -> int:
         {"id": "swap", "query": "move Director E2E Alpha one tile to the right"},
         {"id": "arrange", "query": f"put Director E2E Alpha and Director E2E Beta side by side on workspace {args.workspace + 1}"},
         {"id": "workspace", "query": f"switch to workspace {args.workspace + 1}"},
+        {"id": "rounding", "query": "make all window borders rounded"},
     ]
     processes: list[subprocess.Popen] = []
     results: list[dict] = []

@@ -60,6 +60,27 @@ class NativeCapabilitiesTests(unittest.TestCase):
         native.execute(native.build_step("screenshot", "fullscreen screenshot and rm -rf /"))
         self.assertEqual(runner.call_args.args[0], ["omarchy", "capture", "screenshot", "fullscreen", "save"])
 
+    def test_window_rounding_is_bounded_typed_verified_and_reversible(self):
+        reads = iter((0, 8))
+        def run(argv, **kwargs):
+            if argv[:3] == ["hyprctl", "-j", "getoption"]:
+                return Result(f'{{"int":{next(reads)}}}')
+            return Result("ok\n")
+        runner = Mock(side_effect=run); native = NativeCapabilities(runner)
+        step = native.build_step("window_rounding", "make all window borders rounded")
+        self.assertEqual(step.params["rounding"], 8)
+        result = native.execute(step)
+        self.assertEqual(result.undo_step.params["rounding"], 0)
+        self.assertIn(
+            ["hyprctl", "-r", "eval", "hl.config({ decoration = { rounding = 8 } })"],
+            [call.args[0] for call in runner.call_args_list],
+        )
+
+    def test_window_rounding_understands_square_and_bounded_pixels(self):
+        native = NativeCapabilities(Mock())
+        self.assertEqual(native.build_step("window_rounding", "make every window square").params["rounding"], 0)
+        self.assertEqual(native.build_step("window_rounding", "round corners to 99 px").params["rounding"], 32)
+
 
 if __name__ == "__main__":
     unittest.main()

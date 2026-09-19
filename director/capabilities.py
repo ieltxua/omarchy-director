@@ -17,6 +17,7 @@ CAPABILITY_CRITERIA = {
     "window_action": "Focus, move, gather, tile, float, resize, or fullscreen existing windows, or launch desktop applications",
     "workspace_focus": "Switch the visible desktop directly to a numbered workspace without moving windows",
     "theme_set": "Apply a specifically named installed Omarchy theme",
+    "window_rounding": "Change the global default corner rounding for all windows; includes rounded, more rounded, slightly rounded, square, or sharp corners",
     "background_next": "Cycle to the next background in the current theme",
     "nightlight_toggle": "Toggle the warm night-light color temperature",
     "dnd_toggle": "Toggle notification silencing or do-not-disturb mode",
@@ -77,6 +78,28 @@ class NativeCapabilities:
         match = re.search(r",(\d+)%", output)
         return max(1, min(100, int(match.group(1)))) if match else None
 
+    def _window_rounding(self) -> int | None:
+        try:
+            payload = json.loads(self._run(["hyprctl", "-j", "getoption", "decoration:rounding"]))
+        except (CapabilityError, json.JSONDecodeError):
+            return None
+        value = payload.get("int") if isinstance(payload, dict) else None
+        return int(value) if isinstance(value, int) and 0 <= value <= 32 else None
+
+    @staticmethod
+    def _requested_rounding(query: str) -> int:
+        lowered = query.casefold()
+        exact = re.search(r"(?<!\d)(\d{1,2})\s*(?:px|pixels?)\b", lowered)
+        if exact:
+            return min(32, int(exact.group(1)))
+        if any(phrase in lowered for phrase in ("square", "sharp", "no rounding", "without rounding", "sin redondeo", "esquinas rectas")):
+            return 0
+        if any(phrase in lowered for phrase in ("slightly", "a little", "poco redonde", "suavemente")):
+            return 4
+        if any(phrase in lowered for phrase in ("very rounded", "more rounded", "más redonde", "mas redonde", "bien redonde")):
+            return 12
+        return 8
+
     @staticmethod
     def _amount(query: str, default: int, maximum: int) -> int:
         match = re.search(r"(?<![A-Za-z0-9])(\d{1,3})\s*%?", query)
@@ -100,6 +123,7 @@ class NativeCapabilities:
         params: dict[str, Any] = {"capability": capability}
         labels = {
             "theme_set": f"Aplicar el tema {theme}" if theme else "Aplicar tema",
+            "window_rounding": "Cambiar redondeo global de ventanas",
             "background_next": "Cambiar al siguiente fondo",
             "nightlight_toggle": "Alternar luz nocturna",
             "dnd_toggle": "Alternar modo sin notificaciones",
@@ -122,6 +146,9 @@ class NativeCapabilities:
             if not theme or theme not in self.themes():
                 raise CapabilityError("No pude resolver un tema instalado")
             params["theme"] = theme
+        elif capability == "window_rounding":
+            params["rounding"] = self._requested_rounding(query)
+            labels[capability] = "Usar esquinas rectas" if params["rounding"] == 0 else f"Redondear ventanas a {params['rounding']} px"
         elif capability in {"volume_up", "volume_down"}:
             params["amount"] = self._amount(query, 5, 20)
             labels[capability] += f" {params['amount']}%"
@@ -153,6 +180,12 @@ class NativeCapabilities:
             argv = ["omarchy", "theme", "set", str(params["theme"])]
             if previous and previous != params["theme"]:
                 undo = Step("native", "theme_set", label=f"Restaurar tema {previous}", params={"capability": "theme_set", "theme": previous, "summary": f"Restaurar tema {previous}"})
+        elif capability == "window_rounding":
+            previous = self._window_rounding()
+            desired = max(0, min(32, int(params["rounding"])))
+            argv = ["hyprctl", "-r", "eval", f"hl.config({{ decoration = {{ rounding = {desired} }} }})"]
+            if previous is not None and previous != desired:
+                undo = Step("native", "window_rounding", label=f"Restaurar redondeo a {previous} px", params={"capability": "window_rounding", "rounding": previous, "summary": f"Restaurar redondeo a {previous} px"})
         elif capability == "background_next": argv = ["omarchy", "theme", "bg", "next"]
         elif capability == "nightlight_toggle": argv, undo = ["omarchy", "toggle", "nightlight"], step
         elif capability == "dnd_toggle": argv, undo = ["omarchy", "toggle", "notification", "silencing"], step
@@ -188,7 +221,11 @@ class NativeCapabilities:
         elif capability == "lock": argv = ["omarchy", "system", "lock"]
         else: raise CapabilityError("Capacidad nativa desconocida")
         self._run(argv)
-        if observed_before is not None and capability in {"volume_up", "volume_down"}:
+        if capability == "window_rounding":
+            desired = max(0, min(32, int(params["rounding"])))
+            if self._window_rounding() != desired:
+                raise CapabilityError("Hyprland no aplicó el redondeo solicitado")
+        elif observed_before is not None and capability in {"volume_up", "volume_down"}:
             observed_after = self._volume_percent()
             if observed_after is not None and observed_after != observed_before:
                 undo = Step("native", "volume_set", params={"capability": "volume_set", "percent": observed_before, "summary": f"Restaurar volumen a {observed_before}%"})

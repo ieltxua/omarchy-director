@@ -33,7 +33,7 @@ class AutoExecutePolicyTests(unittest.TestCase):
         self.assertTrue(self.plan(Step("native", "volume_mute")).auto_executable)
 
     def test_observation_dependent_native_changes_require_preview(self):
-        for capability in ("volume_up", "volume_down", "brightness_up", "brightness_down", "theme_set", "stay_awake", "allow_idle"):
+        for capability in ("volume_up", "volume_down", "brightness_up", "brightness_down", "theme_set", "window_rounding", "stay_awake", "allow_idle"):
             with self.subTest(capability=capability):
                 self.assertFalse(self.plan(Step("native", capability)).auto_executable)
 
