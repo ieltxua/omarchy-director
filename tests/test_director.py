@@ -54,6 +54,7 @@ class DirectorTests(unittest.TestCase):
    "record the whole screen":"screenrecord_start", "set a 20 minute reminder to stretch":"reminder",
    "cerrá la pantalla":"lock", "mute the microphone":"mic_mute",
    "switch audio output":"audio_output_switch", "let the PC idle":"allow_idle",
+   "do not let the PC sleep":"stay_awake",
    "make all window borders rounded":"window_rounding",
   }
   for query,capability in examples.items():
@@ -84,6 +85,13 @@ class DirectorTests(unittest.TestCase):
  def test_screen_ocr_is_explicitly_blocked_before_screenshot_routing(self):
   plan=self.make({}).plan("extract text from part of the screen")
   self.assertFalse(plan.executable); self.assertFalse(plan.steps); self.assertTrue(any("OCR" in warning for warning in plan.warnings))
+ def test_external_messaging_is_blocked_before_screenshot_routing(self):
+  plan=self.make({}).plan("email the screenshot to John")
+  self.assertFalse(plan.executable); self.assertFalse(plan.steps); self.assertTrue(any("emails" in warning for warning in plan.warnings))
+ def test_explicit_resize_overrides_a_general_router_no_match(self):
+  response=answers("no_match",[]); response["capability"]={"type":"choice","choice":"no_match","confidence":.99,"probabilities":{}}
+  plan=self.make(response).plan("reduce Terminal twenty percent")
+  self.assertTrue(plan.executable); self.assertEqual(plan.steps[0].operation,"window_resize")
  def test_screenshot_save_language_is_not_mistaken_for_a_scene(self):
   plan=self.make({}).plan("save a screenshot of the entire screen")
   self.assertTrue(plan.executable); self.assertEqual((plan.steps[0].operation,plan.steps[0].target),("native","screenshot"))

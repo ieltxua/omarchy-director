@@ -272,8 +272,8 @@ class Director:
             ("volume_down", r"\b(?:lower|decrease|turn\s+down|baj(?:a|á|ame)|reduc(?:e|í))\b.*\b(?:volume|sound|audio|volumen)\b"),
             ("brightness_up", r"\b(?:increase|brighter|turn\s+up|sub(?:e|í)|aument(?:a|á)|m[aá]s\s+brillante)\b.*\b(?:brightness|display|screen|brillo|pantalla)\b"),
             ("brightness_down", r"\b(?:decrease|dimmer|turn\s+down|baj(?:a|á)|oscurec(?:e|é)|menos\s+brillante)\b.*\b(?:brightness|display|screen|brillo|pantalla)\b"),
-            ("allow_idle", r"\b(?:allow|restore|let|dej(?:a|á)|restaur(?:a|á))\b.*\b(?:idle|sleep|lock|duerma|inactividad)\b"),
             ("stay_awake", r"\b(?:keep|prevent|do\s+not|don['’]t|manten(?:e|é)|no\s+dejes)\b.*\b(?:awake|sleep|idle|lock|despiert[ao]|duerma)\b"),
+            ("allow_idle", r"\b(?:allow|restore|let|dej(?:a|á)|restaur(?:a|á))\b.*\b(?:idle|sleep|lock|duerma|inactividad)\b"),
             ("nightlight_toggle", r"\b(?:night\s*light|warm\s+(?:screen\s+)?filter|luz\s+nocturna|filtro\s+c[aá]lido)\b"),
             ("dnd_toggle", r"\b(?:do\s+not\s+disturb|notification\s+silencing|silence\s+notifications|sin\s+notificaciones|silenci(?:a|á)\s+las\s+notificaciones)\b"),
             ("background_next", r"\b(?:next|cycle|another|siguiente|cambi(?:a|á)|pas(?:a|á))\b.*\b(?:wallpaper|background|fondo)\b"),
@@ -284,6 +284,8 @@ class Director:
     @staticmethod
     def _explicit_unsupported_reason(query: str) -> str | None:
         lowered = query.casefold()
+        if re.search(r"\bemail\b", lowered) or re.search(r"\b(?:send|post)\b.*\b(?:message|slack|discord|team)\b", lowered):
+            return "Director todavía no envía mensajes, emails ni publicaciones"
         if re.search(r"\b(?:extract|read|scan|extra(?:e|é)|le(?:e|é)|escane(?:a|á))\b.*\b(?:text|qr|texto|screen|pantalla|region|regi[oó]n)\b", lowered):
             return "Director todavía no ofrece OCR ni lectura de códigos desde la pantalla"
         return None
@@ -362,12 +364,14 @@ class Director:
             return self._store_plan(Plan(secrets.token_urlsafe(24), query, 0, "No action planned", [], [str(exc)], False, time.time()))
         capability, capability_confidence = _answer_choice(answers, "capability")
         if capability is None: capability, capability_confidence = "window_action", 1.0
+        explicit_intent = self._explicit_window_intent(query)
+        if explicit_intent:
+            capability, capability_confidence = "window_action", 1.0
         theme, theme_confidence = _answer_choice(answers, "theme")
         workspace_choice, workspace_confidence = _answer_choice(answers, "workspace")
         if capability != "window_action":
             return self._plan_capability(query, capability, capability_confidence, theme, theme_confidence, workspace_choice, workspace_confidence, workspace_options, next_empty, state)
         intent, confidence = _answer_choice(answers, "intent")
-        explicit_intent = self._explicit_window_intent(query)
         if explicit_intent and not (explicit_intent == "arrange" and intent == "launch_arrange"):
             intent, confidence = explicit_intent, 1.0
         layout, layout_confidence = _answer_choice(answers, "layout")
