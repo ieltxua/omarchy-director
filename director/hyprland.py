@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-import time
 from typing import Any
 
 
@@ -12,9 +11,8 @@ class HyprlandError(RuntimeError):
 
 
 class Hyprland:
-    def __init__(self, runner=subprocess.run, sleeper=time.sleep):
+    def __init__(self, runner=subprocess.run):
         self.runner = runner
-        self.sleeper = sleeper
 
     def json(self, noun: str) -> Any:
         result = self.runner(["hyprctl", "-j", noun], capture_output=True, text=True, check=False)
@@ -61,30 +59,8 @@ class Hyprland:
             raise HyprlandError(result.stderr.strip() or result.stdout.strip() or "Hyprland dispatch failed")
 
     def focus_window(self, address: str) -> None:
-        wanted = self._address(address)
-        client = self._client(wanted)
-        workspace = client.get("workspace", {})
-        workspace_id = workspace.get("id") if isinstance(workspace, dict) else None
-        if isinstance(workspace_id, int) and workspace_id > 0:
-            self.focus_workspace(workspace_id)
-        clients = self.json("clients")
-        peers = [
-            item for item in clients
-            if isinstance(item, dict)
-            and isinstance(item.get("workspace"), dict)
-            and item["workspace"].get("id") == workspace_id
-        ] if isinstance(clients, list) else []
-        # Hyprland 0.56 accepts a typed focus-window selector but currently
-        # no-ops for exact addresses. Cycle the native workspace focus ring and
-        # verify the exact address after every bounded step instead.
-        for attempt in range(max(1, len(peers) + 1)):
-            active = self.json("activewindow")
-            if isinstance(active, dict) and str(active.get("address", "")).lower() == wanted:
-                return
-            if attempt < len(peers):
-                self.eval_dispatch("hl.dsp.window.cycle_next()")
-                self.sleeper(0.02)
-        raise HyprlandError("window did not receive focus")
+        selector = f"address:{self._address(address)}"
+        self.eval_dispatch(f"hl.dsp.focus({{ window = {json.dumps(selector)} }})")
 
     def move_window(self, address: str, workspace: int | str, follow: bool = False) -> None:
         selector = f"address:{self._address(address)}"
@@ -172,29 +148,14 @@ class Hyprland:
         target_bottom = at[1] + size[1] / 2 >= (top + bottom) / 2
         x_delta = size[0] - width if target_right else width - size[0]
         y_delta = size[1] - height if target_bottom else height - size[1]
-        active = self.json("activewindow")
-        active_address = str(active.get("address", "")) if isinstance(active, dict) else ""
-        self.focus_window(address)
-        try:
-            self.eval_dispatch(f"hl.dsp.window.resize({{ x = {x_delta}, y = {y_delta}, relative = true }})")
-        finally:
-            if active_address and active_address.lower() != self._address(address):
-                try:
-                    self.focus_window(active_address)
-                except HyprlandError:
-                    pass
+        self.eval_dispatch(
+            f"hl.dsp.window.resize({{ x = {x_delta}, y = {y_delta}, relative = true, window = hl.get_window({json.dumps(selector)}) }})"
+        )
 
     def swap_window(self, address: str, direction: str) -> None:
         if direction not in {"l", "r", "u", "d"}:
             raise HyprlandError("invalid swap direction")
-        active = self.json("activewindow")
-        active_address = str(active.get("address", "")) if isinstance(active, dict) else ""
-        self.focus_window(address)
-        try:
-            self.eval_dispatch(f"hl.dsp.window.swap({{ direction = {json.dumps(direction)} }})")
-        finally:
-            if active_address and active_address.lower() != self._address(address):
-                try:
-                    self.focus_window(active_address)
-                except HyprlandError:
-                    pass
+        selector = f"address:{self._address(address)}"
+        self.eval_dispatch(
+            f"hl.dsp.window.swap({{ direction = {json.dumps(direction)}, window = hl.get_window({json.dumps(selector)}) }})"
+        )

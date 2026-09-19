@@ -533,7 +533,6 @@ class Director:
                 self.hypr.focus_workspace(step.workspace)
                 self._wait_for_workspace(step.target or "", step.workspace)
             self._ensure_tiled(step.target or "")
-            self.hypr.focus_window(step.target or "")
         elif step.operation == "workspace_focus":
             state = self.hypr.state()
             focused = next((monitor for monitor in state.get("monitors", []) if monitor.get("focused")), None)
