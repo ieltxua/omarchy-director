@@ -213,6 +213,25 @@ class Director:
         return matches[0] if len(matches) == 1 else None
 
     @staticmethod
+    def _explicit_windows(query: str, clients: dict[str, dict[str, Any]]) -> list[str]:
+        """Return windows named by tokens that uniquely identify a live client."""
+        normalized = " ".join(re.findall(r"[a-z0-9]+", query.casefold()))
+        padded = f" {normalized} "
+        token_owners: dict[str, set[str]] = {}
+        for address, client in clients.items():
+            identity = f"{client.get('class', '')} {client.get('title', '')}".casefold()
+            for token in set(re.findall(r"[a-z0-9]+", identity)):
+                if len(token) > 1 or token == "x":
+                    token_owners.setdefault(token, set()).add(address)
+        positions: dict[str, int] = {}
+        for token, owners in token_owners.items():
+            marker = f" {token} "
+            if len(owners) == 1 and marker in padded:
+                address = next(iter(owners))
+                positions[address] = min(positions.get(address, len(padded)), padded.index(marker))
+        return sorted(positions, key=positions.get)
+
+    @staticmethod
     def _aliased_window(query: str, clients: dict[str, dict[str, Any]], aliases: dict[str, str]) -> str | None:
         normalized = " ".join(re.findall(r"[a-z0-9]+", query.casefold()))
         padded = f" {normalized} "
@@ -360,10 +379,13 @@ class Director:
         app_threshold = 0.50 if named_launch else 0.85
         windows = _selected_noul(answers, "window", sorted(clients)[:MAX_WINDOWS], window_threshold)
         explicit_window = self._aliased_window(query, clients, self.config["aliases"]["windows"]) or self._explicit_window(query, clients, active_address)
+        explicit_windows = self._explicit_windows(query, clients)
         if explicit_window and self._explicit_focus_query(query):
             intent, confidence = "focus", max(confidence, 0.90)
         if explicit_window and intent in {"focus", "float", "tile", "fullscreen_on", "fullscreen_off", "resize_smaller", "resize_larger", "swap_left", "swap_right", "swap_up", "swap_down"}:
             windows = [explicit_window]
+        if intent == "arrange" and len(explicit_windows) >= 2:
+            windows = explicit_windows
         selected_apps = _selected_noul(answers, "app", ranked_apps, app_threshold)
         if named_launch and explicit_apps:
             selected_apps = explicit_apps

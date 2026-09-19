@@ -158,7 +158,7 @@ class NativeCapabilities:
             labels[capability] += f" {params['amount']}%"
         elif capability == "screenshot":
             lowered = query.casefold()
-            params["mode"] = "fullscreen" if any(word in lowered for word in ("full", "entera", "completa")) else ("windows" if "window" in lowered or "ventana" in lowered else "region")
+            params["mode"] = "fullscreen" if any(word in lowered for word in ("full", "fullscreen", "whole", "entire", "entera", "completa")) else ("windows" if "window" in lowered or "ventana" in lowered else "region")
             params["destination"] = "copy" if any(word in lowered for word in ("copy", "clipboard", "portapapeles")) else "save"
             labels[capability] = f"Capturar {params['mode']} y {params['destination']}"
         elif capability == "screenrecord_start":

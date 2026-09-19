@@ -68,6 +68,16 @@ class DirectorTests(unittest.TestCase):
   }
   for query,intent in examples.items():
    with self.subTest(query=query): self.assertEqual(Director._explicit_window_intent(query),intent)
+ def test_multiple_explicit_window_names_are_resolved_without_model_votes(self):
+  rows=[
+   {"address":"0xa1","title":"Alpha Terminal","class":"foot"},
+   {"address":"0xa2","title":"Beta Terminal","class":"foot"},
+   {"address":"0xb1","title":"Home / X","class":"chrome-x.com__-Profile_2"},
+   {"address":"0xc1","title":"ChatGPT","class":"chatgpt"},
+  ]
+  clients={str(client["address"]):client for client in rows}
+  self.assertEqual(Director._explicit_windows("arrange X next to ChatGPT",clients),["0xb1","0xc1"])
+  self.assertEqual(Director._explicit_windows("arrange both terminals",clients),[])
  def test_percentage_words_are_normalized_in_code(self):
   self.assertEqual(Director._percentage("reduce X twenty percent"),20)
   self.assertEqual(Director._percentage("achicá X veinte por ciento"),20)

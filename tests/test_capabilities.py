@@ -67,6 +67,10 @@ class NativeCapabilitiesTests(unittest.TestCase):
         native.execute(native.build_step("screenshot", "fullscreen screenshot and rm -rf /"))
         self.assertEqual(runner.call_args.args[0], ["omarchy", "capture", "screenshot", "fullscreen", "save"])
 
+    def test_screenshot_understands_entire_screen_as_fullscreen(self):
+        step = NativeCapabilities(Mock()).build_step("screenshot", "save a screenshot of the entire screen")
+        self.assertEqual(step.params["mode"], "fullscreen")
+
     def test_window_rounding_is_bounded_typed_verified_and_reversible(self):
         reads = iter((0, 8))
         def run(argv, **kwargs):
