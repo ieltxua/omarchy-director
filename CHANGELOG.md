@@ -5,6 +5,15 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0-rc.5] - 2026-09-19
+
+- Add reversible global Hyprland window rounding for rounded, more-rounded,
+  square, and explicit pixel requests using the Lua runtime configuration API.
+- Route explicit window-appearance requests deterministically so obvious visual
+  commands do not depend on a probabilistic top-level classification.
+- Expand real Jev acceptance to 28/28 semantic cases and live Hyprland
+  acceptance to 9/10; the new rounding case verifies effect and exact undo.
+
 ## [2.1.0-rc.4] - 2026-09-19
 
 - Target resize and directional tile swaps by exact window identity instead of
@@ -92,7 +101,8 @@ and setup path. It is AI-assisted/vibe-coded and is not marketplace-verified.
 - Initial theme-native Director with typed Jev planning, Hyprland execution,
   preview, history, rollback, undo, bar entry, launcher, and voice adapter.
 
-[Unreleased]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.4...HEAD
+[Unreleased]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.5...HEAD
+[2.1.0-rc.5]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.4...v2.1.0-rc.5
 [2.1.0-rc.4]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.3...v2.1.0-rc.4
 [2.1.0-rc.3]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.2...v2.1.0-rc.3
 [2.1.0-rc.2]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.1...v2.1.0-rc.2

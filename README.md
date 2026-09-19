@@ -4,7 +4,7 @@ Director is a theme-native Omarchy shell plugin that turns natural language into
 typed, previewable Hyprland actions. It can arrange windows, navigate workspaces,
 control selected Omarchy features, and capture entire desktops as reusable scenes.
 
-This repository is an experimental release candidate (`2.1.0-rc.4`): it is
+This repository is an experimental release candidate (`2.1.0-rc.5`): it is
 AI-assisted/vibe-coded software, provided for hands-on evaluation. It is local-first,
 collects no telemetry, and is not marketplace-verified. Omarchy shell plugins are
 unsandboxed code; review the source and trust the checkout before enabling it.
@@ -20,7 +20,8 @@ Prompt text is never executed as shell.
   Hyprland addresses and can launch identifiable missing applications.
 - **Composition:** say `float ChatGPT and save as review` in one request.
 - **Native control:** focus, move, resize, tile, float, fullscreen, launch, themes, audio,
-  brightness, night light, notification silencing, capture, reminders, and lock.
+  brightness, global window rounding, night light, notification silencing,
+  capture, reminders, and lock.
 - **Real undo:** restores observed window, workspace, scene, theme, volume, and
   brightness state instead of blindly issuing the opposite command.
 - **Omarchy UI:** uses the current shell theme, typography, spacing, borders, and
@@ -151,6 +152,8 @@ Open the palette and speak or type normally:
 move all terminals to workspace 3
 make X 20% smaller
 make the current window larger
+make all window borders rounded
+make every window square
 move X to the left
 open Slack on workspace 2
 put Slack and Chromium side by side
@@ -355,7 +358,7 @@ and restores the previously focused workspace. On Omarchy the fast suite also
 invokes the native plugin validator. A stable release requires all four gates plus
 bar, F10, and one real microphone smoke test when voice behavior changed.
 
-The RC4 headless acceptance run passes 8 of 9 live compositor cases. Exact window
+The RC5 headless acceptance run passes 9 of 10 live compositor cases. Exact window
 focus is the remaining acceptance gap: the typed Hyprland dispatcher returns
 success and the target workspace is selected, but a compositor session without
 an active input seat does not update `activewindow`. Validate focus once through
