@@ -62,13 +62,27 @@ class Hyprland:
 
     def focus_window(self, address: str) -> None:
         wanted = self._address(address)
-        selector = f"address:{wanted}"
-        self.eval_dispatch(f"hl.dsp.focus({{ window = hl.get_window({json.dumps(selector)}) }})")
-        for attempt in range(8):
+        client = self._client(wanted)
+        workspace = client.get("workspace", {})
+        workspace_id = workspace.get("id") if isinstance(workspace, dict) else None
+        if isinstance(workspace_id, int) and workspace_id > 0:
+            self.focus_workspace(workspace_id)
+        clients = self.json("clients")
+        peers = [
+            item for item in clients
+            if isinstance(item, dict)
+            and isinstance(item.get("workspace"), dict)
+            and item["workspace"].get("id") == workspace_id
+        ] if isinstance(clients, list) else []
+        # Hyprland 0.56 accepts a typed focus-window selector but currently
+        # no-ops for exact addresses. Cycle the native workspace focus ring and
+        # verify the exact address after every bounded step instead.
+        for attempt in range(max(1, len(peers) + 1)):
             active = self.json("activewindow")
             if isinstance(active, dict) and str(active.get("address", "")).lower() == wanted:
                 return
-            if attempt < 7:
+            if attempt < len(peers):
+                self.eval_dispatch("hl.dsp.window.cycle_next()")
                 self.sleeper(0.02)
         raise HyprlandError("window did not receive focus")
 
