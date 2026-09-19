@@ -12,12 +12,28 @@ this project uses [Semantic Versioning](https://semver.org/).
 - Reversible directional swaps such as `move X to the left`.
 - Exact installed-app launch and placement such as `open Slack on workspace 2`.
 - Local diagnostics for recent plans, rejections, gateway failures, and history.
+- Director Lab with seed-reproducible high-volume desktop simulation, a versioned
+  bilingual Jev contract corpus, voice policy tests, and isolated live Omarchy E2E.
+- CI coverage for Python 3.10 and 3.12 plus a 10,000-case stress gate.
+
+### Changed
+
+- YOLO eligibility is now computed by the Python plan model and serialized for
+  the shell UI, keeping the tested policy boundary out of presentation code.
 
 ### Fixed
 
 - GUI launches detach inherited pipes so Electron applications cannot leave
   Director waiting for the application to exit.
 - Exact installed app names no longer depend on a probabilistic app-selection vote.
+- Direct navigation such as `llevame a X` resolves to focus instead of workspace
+  relocation when a unique window is named.
+- Native commands beginning with `activate`/`activa` are no longer mistaken for
+  missing scenes.
+- Word-form resize percentages and Spanish reminder units retain their exact
+  numeric amount and message.
+- Undo restores the original relative tiled slot after moving a window between
+  workspaces, and transient Jev 5xx failures receive one bounded retry.
 
 ## [2.0.0] - 2026-09-19
 

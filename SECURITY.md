@@ -32,6 +32,12 @@ Some actions still have effects outside Director's history once explicitly
 confirmed, such as files created by screenshots or recordings. The preview names
 those actions; undo never claims to delete external artifacts.
 
+The live E2E runner is fixture-owned: it refuses occupied reserved workspaces,
+creates uniquely classified Foot windows, mutates only their validated addresses,
+terminates only the process groups it created, and restores the previous focused
+workspace. The semantic evaluator uses a synthetic desktop and never executes a
+Jev-produced plan.
+
 ## Reporting a vulnerability
 
 Do not open a public issue for an undisclosed vulnerability. Use GitHub's private

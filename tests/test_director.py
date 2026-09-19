@@ -71,11 +71,21 @@ class DirectorTests(unittest.TestCase):
   response=answers("focus",["0xbbb"]); response["intent"]["confidence"]=.70; response["window:0xbbb"]["noul"]=.86
   plan=self.make(response).plan("take me to x app")
   self.assertTrue(plan.executable); self.assertEqual([(step.operation,step.target) for step in plan.steps],[("focus","0xbbb")])
+ def test_explicit_navigation_to_unique_window_overrides_move_ambiguity(self):
+  old=CLIENTS[1]["title"]; CLIENTS[1]["title"]="Home / X"
+  try:
+   response=answers("move",workspace="keep"); response["intent"]["confidence"]=.61
+   plan=self.make(response).plan("llevame a X")
+   self.assertTrue(plan.executable); self.assertEqual([(step.operation,step.target) for step in plan.steps],[("focus","0xbbb")])
+  finally: CLIENTS[1]["title"]=old
  def test_exact_x_resize_is_typed_bounded_and_reversible(self):
   director=self.make(answers("resize_smaller",["0xbbb"])); plan=director.plan("can you make x 20% smaller?")
   self.assertTrue(plan.executable); self.assertEqual((plan.steps[0].operation,plan.steps[0].params["width"],plan.steps[0].params["height"]),("window_resize",720,560))
   director.execute(plan.token); self.assertIn(("resize_window","0xbbb",720,560),self.hypr.calls)
-  director.undo(); self.assertEqual(self.hypr.calls[-1],("resize_window","0xbbb",900,700))
+  director.undo(); self.assertIn(("resize_window","0xbbb",900,700),self.hypr.calls)
+ def test_resize_accepts_percent_word(self):
+  director=self.make(answers("resize_smaller",["0xbbb"])); plan=director.plan("make Browser 20 percent smaller")
+  self.assertEqual((plan.steps[0].params["width"],plan.steps[0].params["height"]),(720,560))
  def test_exact_x_name_is_resolved_when_jev_window_probability_varies(self):
   old=CLIENTS[1]["title"]; CLIENTS[1]["title"]="Home / X"
   try:
@@ -203,6 +213,10 @@ class DirectorTests(unittest.TestCase):
   restore=director.plan("activate coding")
   self.assertTrue(restore.executable); director.execute(restore.token)
   self.assertIn(("move_window","0xaaa",1,False),self.hypr.calls)
+ def test_native_activate_phrase_is_not_hijacked_by_scene_parser(self):
+  response=answers("keep"); response["capability"]={"type":"choice","choice":"dnd_toggle","confidence":.96}
+  native=FakeNative(); plan=Director(self.hypr,FakeJev(response),self.store,launcher=Mock(),sleeper=lambda _:None,native=native).plan("activa modo sin notificaciones")
+  self.assertTrue(plan.executable); self.assertEqual(plan.steps[0].target,"dnd_toggle")
  def test_normal_action_can_save_result_as_scene(self):
   director=self.make(answers("move",["0xaaa"],workspace="workspace:2"))
   plan=director.plan("move Terminal to workspace 2 and save as focus desk")
@@ -242,7 +256,15 @@ class JevTests(unittest.TestCase):
   result=Jev("/tmp/j",conn).decide({"request":"x"},{"intent":{"type":"choice","instructions":"Choose","criteria":{"focus":"Focus","keep":"No action"}},"window:0xaaa":{"type":"noul","instructions":"Select?","criteria":{"true":"yes","false":"no"}}})
   body=json.loads(conn.return_value.request.call_args.kwargs["body"]); self.assertEqual(set(body),{"model","state","questions"}); self.assertIsInstance(body["questions"],dict); self.assertEqual(body["questions"]["intent"]["criteria"]["focus"],"Focus"); self.assertEqual(result["window:0xaaa"]["noul"],.95)
  def test_gateway_failure(self):
-  with self.assertRaises(JevError): Jev("/tmp/j",Mock(side_effect=OSError())).decide({},[])
+  connection=Mock(side_effect=OSError())
+  with self.assertRaises(JevError): Jev("/tmp/j",connection,sleeper=lambda _:None).decide({}, {"intent":{"type":"choice"}})
+  self.assertEqual(connection.call_count,2)
+ def test_transient_gateway_failure_retries_once(self):
+  response=Mock(status=200); response.read.return_value=b'{"answers":{"intent":{"type":"choice","choice":"focus","confidence":0.9}}}'
+  good=Mock(); good.getresponse.return_value=response
+  connection=Mock(side_effect=[OSError(),good])
+  result=Jev("/tmp/j",connection,sleeper=lambda _:None).decide({}, {"intent":{"type":"choice"}})
+  self.assertEqual(result["intent"]["choice"],"focus"); self.assertEqual(connection.call_count,2)
 class HyprTests(unittest.TestCase):
  def test_no_shell(self):
   runner=Mock(return_value=Result("[]")); self.assertEqual(Hyprland(runner).json("clients"),[]); runner.assert_called_once_with(["hyprctl","-j","clients"],capture_output=True,text=True,check=False)

@@ -85,7 +85,7 @@ class NativeCapabilities:
     @staticmethod
     def _reminder(query: str) -> tuple[int, str]:
         match = re.search(
-            r"(?:in|en|dentro de)\s+(\d{1,3})\s*(minutes?|mins?|minutos?|hours?|hrs?|horas?)\s*(?:to|para|de que)?\s*(.+)$",
+            r"(?:in|en|dentro de)\s+(\d{1,3})\s*(minutos?|minutes?|mins?|horas?|hours?|hrs?)\s*(?:to|para|de que)?\s*(.+)$",
             query.strip(), re.IGNORECASE,
         )
         if not match:

@@ -147,14 +147,7 @@ Item {
   }
 
   function isSafeForAutoExecute(candidate) {
-    var safeNative = ["theme_set", "nightlight_toggle", "dnd_toggle", "stay_awake", "allow_idle", "volume_up", "volume_down", "volume_mute", "mic_mute", "brightness_up", "brightness_down"]
-    var steps = candidate && candidate.steps ? candidate.steps : []
-    for (var i = 0; i < steps.length; i++) {
-      var step = steps[i] || {}
-      if (step.operation === "launch" || step.operation === "scene_apply") return false
-      if (step.operation === "native" && safeNative.indexOf(String(step.target || "")) === -1) return false
-    }
-    return steps.length > 0
+    return !!candidate && candidate.auto_executable === true
   }
 
   function executePlan() {

@@ -103,6 +103,9 @@ class Director:
         except ValueError: key = ""
         scene = self.scene_manager.get(key) if key else None
         if not scene:
+            explicit_scene = bool(re.search(r"\b(?:scene|setup|layout|desktop|escena|escritorio|configuraci[oó]n)\b", lowered))
+            if not explicit_scene:
+                return None
             return self._store_plan(Plan(secrets.token_urlsafe(24), query, 0, "No encontré esa escena", [], [f"Escenas disponibles: {', '.join(names) or 'ninguna'}"], False, time.time()))
         resolved = self.scene_manager.resolve(key, state)
         launchable = [spec for spec in resolved["missing"] if spec.get("desktop_id")]
@@ -190,6 +193,13 @@ class Director:
         matches = [address for address, score in scores.items() if score == best and score > 0]
         return matches[0] if len(matches) == 1 else None
 
+    @staticmethod
+    def _explicit_focus_query(query: str) -> bool:
+        lowered = query.strip().casefold()
+        if re.search(r"\b(?:workspace|left|right|up|down|izquierda|derecha|arriba|abajo)\b", lowered):
+            return False
+        return bool(re.match(r"^(?:focus|show me|take me to|bring me to|go to|enfoc[aá]|mostr[aá]me|llev[aá]me a|ll[eé]vame a|ir a)\b", lowered))
+
     def plan(self, query: str) -> Plan:
         scene_plan = self._scene_query_plan(query)
         if scene_plan: return scene_plan
@@ -237,6 +247,8 @@ class Director:
         app_threshold = 0.50 if named_launch else 0.85
         windows = _selected_noul(answers, "window", sorted(clients)[:MAX_WINDOWS], window_threshold)
         explicit_window = self._explicit_window(query, clients, active_address)
+        if explicit_window and self._explicit_focus_query(query):
+            intent, confidence = "focus", max(confidence, 0.90)
         if explicit_window and intent in {"focus", "resize_smaller", "resize_larger", "swap_left", "swap_right", "swap_up", "swap_down"}:
             windows = [explicit_window]
         selected_apps = _selected_noul(answers, "app", ranked_apps, app_threshold)
@@ -286,7 +298,7 @@ class Director:
                 if not isinstance(size, list) or len(size) != 2 or not all(isinstance(value, int) and value > 0 for value in size):
                     warnings.append("No pude leer el tamaño actual de la ventana")
                 else:
-                    amount_match = re.search(r"(?<![A-Za-z0-9])(\d{1,2})\s*%", query)
+                    amount_match = re.search(r"(?<![A-Za-z0-9])(\d{1,2})\s*(?:%|percent\b|por\s+ciento\b)", query, re.IGNORECASE)
                     amount = min(50, max(1, int(amount_match.group(1)))) if amount_match else 15
                     factor = (100 - amount) / 100 if intent == "resize_smaller" else (100 + amount) / 100
                     width = max(160, min(8192, round(size[0] * factor)))
@@ -570,10 +582,11 @@ class Director:
         undone = {entry.get("undo_of") for entry in history if entry.get("undo_of")}
         record = next((entry for entry in reversed(history) if entry.get("token") and entry.get("token") not in undone and (entry.get("undo_steps") or entry.get("snapshot", {}).get("windows"))), None)
         if not record: raise ValueError("no reversible operation in history")
-        warnings = self._restore_snapshot(record.get("snapshot", {}))
+        warnings: list[str] = []
         for raw_step in reversed(record.get("undo_steps", [])):
             try: self._execute_step(Step(**{key: value for key, value in raw_step.items() if key != "summary"}), desktop_entries())
             except Exception as exc: warnings.append(f"undo nativo: {exc}")
+        warnings.extend(self._restore_snapshot(record.get("snapshot", {})))
         snapshots = record.get("snapshot", {}).get("windows", record.get("snapshot", {}))
         restored = len(snapshots) - len([warning for warning in warnings if warning.startswith("missing window")])
         self.store.append_history({"undo_of": record.get("token"), "at": time.time(), "summary": "undo"})
@@ -601,8 +614,44 @@ class Director:
                     self.hypr.restore_geometry(address, snapshot["at"], snapshot["size"])
             except Exception as exc:
                 warnings.append(f"{address}: {exc}")
+        for address, snapshot in snapshots.items():
+            if address not in current or bool(snapshot.get("floating")):
+                continue
+            target_at, target_size = snapshot.get("at"), snapshot.get("size")
+            if not isinstance(target_at, list) or len(target_at) != 2 or not isinstance(target_size, list) or len(target_size) != 2:
+                continue
+            try:
+                if not self._restore_tiled_position(address, target_at, max(2, len(snapshots) * 2)):
+                    warnings.append(f"{address}: tiled position did not return to its previous slot")
+            except Exception as exc:
+                warnings.append(f"{address}: tiled position: {exc}")
         active = snapshot_root.get("active")
         if isinstance(active, str) and active in current:
             try: self.hypr.focus_window(active)
             except Exception as exc: warnings.append(f"focus {active}: {exc}")
         return warnings
+
+    def _restore_tiled_position(self, address: str, target_at: list[int], attempts: int) -> bool:
+        for attempt in range(attempts + 1):
+            client = next((item for item in self.hypr.state()["clients"] if item.get("address") == address), None)
+            if not isinstance(client, dict):
+                return False
+            current_at, current_size = client.get("at"), client.get("size")
+            if current_at == target_at:
+                return True
+            if attempt == attempts or not isinstance(current_at, list) or len(current_at) != 2:
+                return False
+            delta_x, delta_y = target_at[0] - current_at[0], target_at[1] - current_at[1]
+            if abs(delta_x) >= abs(delta_y) and delta_x:
+                direction = "r" if delta_x > 0 else "l"
+            elif delta_y:
+                direction = "d" if delta_y > 0 else "u"
+            else:
+                return False
+            before = (current_at, current_size)
+            self.hypr.swap_window(address, direction)
+            self.sleeper(0.03)
+            after = next((item for item in self.hypr.state()["clients"] if item.get("address") == address), None)
+            if not isinstance(after, dict) or (after.get("at"), after.get("size")) == before:
+                return False
+        return False

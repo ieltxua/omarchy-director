@@ -238,14 +238,36 @@ journalctl --user --since '10 minutes ago' | grep -i director
 ## Development and release
 
 ```bash
-./tests/run
+./tests/director-lab fast
+./tests/director-lab stress
 ```
 
-The suite runs unit, packaging, Python compile, JSON, shell-syntax, and symlink
-checks. On Omarchy it also invokes the native plugin validator. Live release
-acceptance should additionally verify text entry, a disposable window mutation,
-scene capture/restore, exact undo readback, bar invocation, and F10 after the
-optional binding install.
+The fast suite runs unit, policy, voice-adapter, packaging, Python compile, JSON,
+shell-syntax, and symlink checks, including more than 5,000 generated desktop
+states and action sequences. The stress gate raises that deterministic population
+to at least 10,000 cases. Replay any failure with its reported seed:
+
+```bash
+DIRECTOR_GENERATIVE_SEED=20260919 DIRECTOR_GENERATED_CASES=10000 \
+  ./tests/director-lab stress
+```
+
+Two explicit gates exercise real integrations and therefore do not run in the
+portable GitHub job:
+
+```bash
+# Real pinned Jev; plans against a synthetic desktop and never executes them.
+./tests/director-lab semantic --report ~/.local/state/omarchy-director/semantic-report.json
+
+# Real Omarchy/Hyprland; owns only two Foot fixtures on reserved workspaces 91-92.
+./tests/director-lab live --report ~/.local/state/omarchy-director/e2e-report.json
+```
+
+The live runner aborts if its workspaces are occupied or stale fixtures exist,
+checks the effect and exact undo after every case, kills only processes it started,
+and restores the previously focused workspace. On Omarchy the fast suite also
+invokes the native plugin validator. A release requires all four gates plus bar,
+F10, and one real microphone smoke test when voice behavior changed.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [CHANGELOG.md](CHANGELOG.md), and
 [SECURITY.md](SECURITY.md).

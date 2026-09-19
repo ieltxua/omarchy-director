@@ -4,6 +4,13 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
+AUTOEXECUTE_NATIVE = frozenset({
+    "theme_set", "nightlight_toggle", "dnd_toggle", "stay_awake", "allow_idle",
+    "volume_up", "volume_down", "volume_mute", "mic_mute", "brightness_up",
+    "brightness_down",
+})
+
+
 @dataclass
 class Step:
     operation: str
@@ -46,6 +53,17 @@ class Plan:
     created_at: float = 0.0
     snapshot: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def auto_executable(self) -> bool:
+        if not self.executable or not self.steps:
+            return False
+        for step in self.steps:
+            if step.operation in {"launch", "place_launch", "scene_apply"}:
+                return False
+            if step.operation == "native" and step.target not in AUTOEXECUTE_NATIVE:
+                return False
+        return True
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "token": self.token,
@@ -54,6 +72,7 @@ class Plan:
             "steps": [step.to_dict() for step in self.steps],
             "warnings": self.warnings,
             "executable": self.executable,
+            "auto_executable": self.auto_executable,
         }
 
     @classmethod
