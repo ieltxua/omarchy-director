@@ -5,6 +5,15 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0-rc.4] - 2026-09-19
+
+- Target resize and directional tile swaps by exact window identity instead of
+  depending on compositor focus side effects.
+- Restore tiled layouts on their original visible workspace before rebuilding
+  slot order, then return to the previously active workspace.
+- Record the live Omarchy acceptance result: 8/9 effects and exact undos pass;
+  exact focus remains pending validation with an active input seat.
+
 ## [2.1.0-rc.3] - 2026-09-19
 
 - Wait for Hyprland focus acknowledgement before focus-dependent resize and
@@ -83,7 +92,8 @@ and setup path. It is AI-assisted/vibe-coded and is not marketplace-verified.
 - Initial theme-native Director with typed Jev planning, Hyprland execution,
   preview, history, rollback, undo, bar entry, launcher, and voice adapter.
 
-[Unreleased]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.3...HEAD
+[Unreleased]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.4...HEAD
+[2.1.0-rc.4]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.3...v2.1.0-rc.4
 [2.1.0-rc.3]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.2...v2.1.0-rc.3
 [2.1.0-rc.2]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.1...v2.1.0-rc.2
 [2.1.0-rc.1]: https://github.com/ieltxua/omarchy-director/releases/tag/v2.1.0-rc.1

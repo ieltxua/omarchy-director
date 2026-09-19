@@ -305,8 +305,12 @@ class HyprTests(unittest.TestCase):
   evals=[call.args[0][2] for call in runner.call_args_list if call.args[0][:2]==["hyprctl","eval"]]
   self.assertTrue(any('direction = "l"' in value and 'address:0xaaa' in value for value in evals))
  def test_focus_window_uses_typed_exact_selector(self):
-  runner=Mock(return_value=Result("ok")); Hyprland(runner).focus_window("0xaaa")
+  def run(argv,**kwargs):
+   if argv[:3]==["hyprctl","-j","clients"]: return Result(json.dumps([{"address":"0xaaa","workspace":{"id":2}}]))
+   return Result("ok")
+  runner=Mock(side_effect=run); Hyprland(runner).focus_window("0xaaa")
   self.assertIn('window = "address:0xaaa"',runner.call_args.args[0][2])
+  self.assertTrue(any('workspace = "2"' in call.args[0][2] for call in runner.call_args_list if call.args[0][:2]==["hyprctl","eval"]))
 
 class CliTests(unittest.TestCase):
  def test_history_limit_returns_top_level_items(self):

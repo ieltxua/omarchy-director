@@ -4,7 +4,7 @@ Director is a theme-native Omarchy shell plugin that turns natural language into
 typed, previewable Hyprland actions. It can arrange windows, navigate workspaces,
 control selected Omarchy features, and capture entire desktops as reusable scenes.
 
-This repository is an experimental release candidate (`2.1.0-rc.3`): it is
+This repository is an experimental release candidate (`2.1.0-rc.4`): it is
 AI-assisted/vibe-coded software, provided for hands-on evaluation. It is local-first,
 collects no telemetry, and is not marketplace-verified. Omarchy shell plugins are
 unsandboxed code; review the source and trust the checkout before enabling it.
@@ -352,8 +352,14 @@ portable GitHub job:
 The live runner aborts if its workspaces are occupied or stale fixtures exist,
 checks the effect and exact undo after every case, kills only processes it started,
 and restores the previously focused workspace. On Omarchy the fast suite also
-invokes the native plugin validator. A release requires all four gates plus bar,
-F10, and one real microphone smoke test when voice behavior changed.
+invokes the native plugin validator. A stable release requires all four gates plus
+bar, F10, and one real microphone smoke test when voice behavior changed.
+
+The RC4 headless acceptance run passes 8 of 9 live compositor cases. Exact window
+focus is the remaining acceptance gap: the typed Hyprland dispatcher returns
+success and the target workspace is selected, but a compositor session without
+an active input seat does not update `activewindow`. Validate focus once through
+the real Moonlight/keyboard session before treating this candidate as stable.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [CHANGELOG.md](CHANGELOG.md), and
 [SECURITY.md](SECURITY.md).

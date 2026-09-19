@@ -59,7 +59,16 @@ class Hyprland:
             raise HyprlandError(result.stderr.strip() or result.stdout.strip() or "Hyprland dispatch failed")
 
     def focus_window(self, address: str) -> None:
-        selector = f"address:{self._address(address)}"
+        wanted = self._address(address)
+        client = self._client(wanted)
+        workspace = client.get("workspace", {})
+        workspace_id = workspace.get("id") if isinstance(workspace, dict) else None
+        workspace_name = workspace.get("name") if isinstance(workspace, dict) else None
+        if isinstance(workspace_id, int) and workspace_id > 0:
+            self.focus_workspace(workspace_id)
+        elif isinstance(workspace_name, str) and workspace_name:
+            self.focus_workspace(f"name:{workspace_name}")
+        selector = f"address:{wanted}"
         self.eval_dispatch(f"hl.dsp.focus({{ window = {json.dumps(selector)} }})")
 
     def move_window(self, address: str, workspace: int | str, follow: bool = False) -> None:
