@@ -78,6 +78,10 @@ class SemanticContractTests(unittest.TestCase):
             if case["executable"]:
                 self.assertTrue(case.get("operations"), case["id"])
 
+    def test_exhaustive_runner_has_a_safe_default_rate(self):
+        script = (REPO / "tests/director-lab").read_text(encoding="utf-8")
+        self.assertIn('DIRECTOR_SEMANTIC_RPM="${DIRECTOR_SEMANTIC_RPM:-90}"', script)
+
     def test_capability_matrix_covers_every_public_native_capability(self):
         payload = json.loads((REPO / "tests/contracts/capability_matrix.json").read_text(encoding="utf-8"))
         mapped = {capability["id"] for capability in payload["capabilities"]}

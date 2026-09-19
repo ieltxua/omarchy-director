@@ -21,7 +21,7 @@ case "$command_name" in
     exec python3 tests/lab/semantic_eval.py "$@"
     ;;
   semantic-all)
-    exec python3 tests/lab/semantic_eval.py --contracts tests/contracts/semantic_extended.json "$@"
+    exec env DIRECTOR_SEMANTIC_RPM="${DIRECTOR_SEMANTIC_RPM:-90}" python3 tests/lab/semantic_eval.py --contracts tests/contracts/semantic_extended.json "$@"
     ;;
   api-audit)
     exec python3 tests/lab/capability_audit.py "$@"
