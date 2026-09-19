@@ -55,6 +55,13 @@ class NativeCapabilitiesTests(unittest.TestCase):
         step = NativeCapabilities(Mock()).build_step("reminder", "recordame en 20 minutos estirar")
         self.assertEqual((step.params["minutes"], step.params["message"]), (20, "estirar"))
 
+    def test_reminder_accepts_duration_first_and_set_forms(self):
+        native = NativeCapabilities(Mock())
+        first = native.build_step("reminder", "in 20 minutes remind me to stretch")
+        second = native.build_step("reminder", "set a 20 minute reminder to stretch")
+        self.assertEqual((first.params["minutes"], first.params["message"]), (20, "stretch"))
+        self.assertEqual((second.params["minutes"], second.params["message"]), (20, "stretch"))
+
     def test_screenshot_never_accepts_command_text(self):
         runner = Mock(return_value=Result()); native = NativeCapabilities(runner)
         native.execute(native.build_step("screenshot", "fullscreen screenshot and rm -rf /"))

@@ -238,12 +238,77 @@ class Director:
     def _explicit_native_capability(query: str) -> str | None:
         lowered = query.casefold()
         subject = re.search(r"\b(?:window|windows|ventana|ventanas|corner|corners|esquina|esquinas|border|borders|bordes)\b", lowered)
-        rounding = re.search(r"\b(?:round(?:ed|ing)?|square|sharp|redondead[ao]s?|redonde|rect[ao]s?)\b", lowered)
-        return "window_rounding" if subject and rounding else None
+        rounding = re.search(r"\b(?:round(?:ed|ing)?|square|sharp|redonde(?:ad[ao]s?|[aá])?|cuadrad[ao]s?|rect[ao]s?)\b", lowered)
+        if subject and rounding:
+            return "window_rounding"
+        routes = (
+            ("screenrecord_stop", r"\b(?:stop|finish|end|deten(?:e|é)|termin(?:a|á))\b.*\b(?:screen\s*record(?:ing)?|recording|grabaci[oó]n)\b"),
+            ("screenrecord_start", r"\b(?:screen\s*record(?:ing)?|record(?:ing)?\s+(?:the\s+)?(?:whole\s+|full\s+)?screen|grab(?:a|á|ar).*pantalla)\b"),
+            ("screenshot", r"\b(?:screenshot|captura\s+de\s+pantalla|captur(?:a|á|ar).*(?:pantalla|regi[oó]n)|capture.*(?:screen|region|area))\b"),
+            ("reminder", r"\b(?:remind(?:er)?|record(?:a|á|ame)|recordatorio)\b"),
+            ("mic_mute", r"\b(?:mute|silence|toggle|apag(?:a|á)|mute(?:a|á)|silenci(?:a|á))\b.*\b(?:mic(?:rophone)?|micr[oó]fono)\b"),
+            ("audio_output_switch", r"\b(?:switch|cycle|next|cambi(?:a|á)|pas(?:a|á))\b.*\b(?:audio|sound|speaker|parlante|salida)\b"),
+            ("volume_mute", r"\b(?:mute|silence|toggle|mute(?:a|á)|silenci(?:a|á))\b.*\b(?:audio|sound|speaker|volume|parlantes?|sonido)\b"),
+            ("volume_up", r"\b(?:raise|increase|turn\s+up|sub(?:e|í)|aument(?:a|á))\b.*\b(?:volume|sound|audio|volumen)\b"),
+            ("volume_down", r"\b(?:lower|decrease|turn\s+down|baj(?:a|á|ame)|reduc(?:e|í))\b.*\b(?:volume|sound|audio|volumen)\b"),
+            ("brightness_up", r"\b(?:increase|brighter|turn\s+up|sub(?:e|í)|aument(?:a|á)|m[aá]s\s+brillante)\b.*\b(?:brightness|display|screen|brillo|pantalla)\b"),
+            ("brightness_down", r"\b(?:decrease|dimmer|turn\s+down|baj(?:a|á)|oscurec(?:e|é)|menos\s+brillante)\b.*\b(?:brightness|display|screen|brillo|pantalla)\b"),
+            ("allow_idle", r"\b(?:allow|restore|let|dej(?:a|á)|restaur(?:a|á))\b.*\b(?:idle|sleep|lock|duerma|inactividad)\b"),
+            ("stay_awake", r"\b(?:keep|prevent|do\s+not|don['’]t|manten(?:e|é)|no\s+dejes)\b.*\b(?:awake|sleep|idle|lock|despiert[ao]|duerma)\b"),
+            ("nightlight_toggle", r"\b(?:night\s*light|warm\s+(?:screen\s+)?filter|luz\s+nocturna|filtro\s+c[aá]lido)\b"),
+            ("dnd_toggle", r"\b(?:do\s+not\s+disturb|notification\s+silencing|silence\s+notifications|sin\s+notificaciones|silenci(?:a|á)\s+las\s+notificaciones)\b"),
+            ("background_next", r"\b(?:next|cycle|another|siguiente|cambi(?:a|á)|pas(?:a|á))\b.*\b(?:wallpaper|background|fondo)\b"),
+            ("lock", r"\b(?:lock|secure)\b.*\b(?:computer|pc|screen)\b|\b(?:bloque(?:a|á).*computadora|cerr(?:a|á)\s+la\s+pantalla)\b"),
+        )
+        return next((capability for capability, pattern in routes if re.search(pattern, lowered)), None)
+
+    @staticmethod
+    def _explicit_unsupported_reason(query: str) -> str | None:
+        lowered = query.casefold()
+        if re.search(r"\b(?:extract|read|scan|extra(?:e|é)|le(?:e|é)|escane(?:a|á))\b.*\b(?:text|qr|texto|screen|pantalla|region|regi[oó]n)\b", lowered):
+            return "Director todavía no ofrece OCR ni lectura de códigos desde la pantalla"
+        return None
+
+    @staticmethod
+    def _explicit_window_intent(query: str) -> str | None:
+        lowered = query.casefold()
+        if re.search(r"\b(?:take|exit|out|sac(?:a|á)|sal(?:ir|í))\b.*\b(?:full\s*screen|pantalla\s+completa)\b|\bunfullscreen\b", lowered):
+            return "fullscreen_off"
+        if re.search(r"\b(?:side\s+by\s+side|next\s+to|together|lado\s+a\s+lado|junt(?:a|á)|acomod(?:a|á))\b", lowered):
+            return "arrange"
+        if re.search(r"\b(?:left|izquierda)\b", lowered) and re.search(r"\b(?:tile|swap|move|put|mov(?:e|é))\b", lowered):
+            return "swap_left"
+        if re.search(r"\b(?:right|derecha)\b", lowered) and re.search(r"\b(?:tile|swap|move|put|mov(?:e|é))\b", lowered):
+            return "swap_right"
+        if re.search(r"\b(?:smaller|shrink|reduce|achic(?:a|á)|m[aá]s\s+chic[ao])\b", lowered):
+            return "resize_smaller"
+        if re.search(r"\b(?:larger|grow|increase|agrand(?:a|á)|m[aá]s\s+grande)\b", lowered):
+            return "resize_larger"
+        if re.search(r"\b(?:floating|float|flotante|del\s+tiling|out\s+of\s+the\s+tiling)\b", lowered):
+            return "float"
+        if re.search(r"\b(?:back\s+in\s+the\s+tiling|tiled|tile|integr(?:a|á).*tiling|al\s+mosaico)\b", lowered):
+            return "tile"
+        if re.search(r"\b(?:full\s*screen|pantalla\s+completa)\b", lowered):
+            return "fullscreen_on"
+        return None
+
+    @staticmethod
+    def _percentage(query: str, default: int = 15) -> int:
+        numeric = re.search(r"(?<![A-Za-z0-9])(\d{1,2})\s*(?:%|percent\b|por\s+ciento\b)", query, re.IGNORECASE)
+        if numeric:
+            return min(50, max(1, int(numeric.group(1))))
+        words = {"ten": 10, "diez": 10, "fifteen": 15, "quince": 15, "twenty": 20, "veinte": 20, "thirty": 30, "treinta": 30, "forty": 40, "cuarenta": 40, "fifty": 50, "cincuenta": 50}
+        lowered = query.casefold()
+        return next((amount for word, amount in words.items() if re.search(rf"\b{word}\b", lowered)), default)
 
     def plan(self, query: str) -> Plan:
-        scene_plan = self._scene_query_plan(query)
-        if scene_plan: return scene_plan
+        explicit_capability = self._explicit_native_capability(query)
+        unsupported_reason = self._explicit_unsupported_reason(query)
+        if unsupported_reason:
+            return self._store_plan(Plan(secrets.token_urlsafe(24), query, 1, "No hay una acción segura para ejecutar", [], [unsupported_reason], False, time.time()))
+        if not explicit_capability:
+            scene_plan = self._scene_query_plan(query)
+            if scene_plan: return scene_plan
         base_query, save_after = self._post_save(query)
         if save_after:
             base_plan = self.plan(base_query)
@@ -266,7 +331,7 @@ class Director:
             next_empty = next((number for number in range(1, max(existing, default=0) + 2) if number not in existing), max(existing, default=0) + 1)
         create = max(existing, default=0) + 1
         workspace_options = ["keep", "no_match", "next_empty", *(f"workspace:{number}" for number in existing[:12]), f"create:{create}"]
-        explicit_capability = self._explicit_native_capability(base_query)
+        explicit_capability = explicit_capability or self._explicit_native_capability(base_query)
         if explicit_capability:
             return self._plan_capability(base_query, explicit_capability, 1.0, None, 0.0, None, 0.0, workspace_options, next_empty, state)
         ranked_apps = self._rank_apps(query, apps)
@@ -283,6 +348,9 @@ class Director:
         if capability != "window_action":
             return self._plan_capability(query, capability, capability_confidence, theme, theme_confidence, workspace_choice, workspace_confidence, workspace_options, next_empty, state)
         intent, confidence = _answer_choice(answers, "intent")
+        explicit_intent = self._explicit_window_intent(query)
+        if explicit_intent and not (explicit_intent == "arrange" and intent == "launch_arrange"):
+            intent, confidence = explicit_intent, 1.0
         layout, layout_confidence = _answer_choice(answers, "layout")
         view_choice, view_confidence = _answer_choice(answers, "workspace_view")
         named_apps = [app_id for app_id in ranked_apps if self._app_match_score(query, app_id, apps[app_id]) > 0]
@@ -294,7 +362,7 @@ class Director:
         explicit_window = self._aliased_window(query, clients, self.config["aliases"]["windows"]) or self._explicit_window(query, clients, active_address)
         if explicit_window and self._explicit_focus_query(query):
             intent, confidence = "focus", max(confidence, 0.90)
-        if explicit_window and intent in {"focus", "resize_smaller", "resize_larger", "swap_left", "swap_right", "swap_up", "swap_down"}:
+        if explicit_window and intent in {"focus", "float", "tile", "fullscreen_on", "fullscreen_off", "resize_smaller", "resize_larger", "swap_left", "swap_right", "swap_up", "swap_down"}:
             windows = [explicit_window]
         selected_apps = _selected_noul(answers, "app", ranked_apps, app_threshold)
         if named_launch and explicit_apps:
@@ -342,8 +410,7 @@ class Director:
                 if not isinstance(size, list) or len(size) != 2 or not all(isinstance(value, int) and value > 0 for value in size):
                     warnings.append("No pude leer el tamaño actual de la ventana")
                 else:
-                    amount_match = re.search(r"(?<![A-Za-z0-9])(\d{1,2})\s*(?:%|percent\b|por\s+ciento\b)", query, re.IGNORECASE)
-                    amount = min(50, max(1, int(amount_match.group(1)))) if amount_match else 15
+                    amount = self._percentage(query)
                     factor = (100 - amount) / 100 if intent == "resize_smaller" else (100 + amount) / 100
                     width = max(160, min(8192, round(size[0] * factor)))
                     height = max(120, min(8192, round(size[1] * factor)))

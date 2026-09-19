@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 
-from tests.lab.semantic_eval import expand_contract
+from tests.lab.semantic_eval import expand_contract, select_cases
 from tests.lab.capability_audit import parse_hyprctl_commands
 from director.capabilities import CAPABILITY_CRITERIA
 
@@ -81,6 +81,10 @@ class SemanticContractTests(unittest.TestCase):
     def test_exhaustive_runner_has_a_safe_default_rate(self):
         script = (REPO / "tests/director-lab").read_text(encoding="utf-8")
         self.assertIn('DIRECTOR_SEMANTIC_RPM="${DIRECTOR_SEMANTIC_RPM:-90}"', script)
+
+    def test_exhaustive_runner_filters_failed_families_without_reordering(self):
+        cases = [{"id": "focus-001"}, {"id": "resize-001"}, {"id": "focus-002"}]
+        self.assertEqual([case["id"] for case in select_cases(cases, ["focus-"], 1)], ["focus-001"])
 
     def test_capability_matrix_covers_every_public_native_capability(self):
         payload = json.loads((REPO / "tests/contracts/capability_matrix.json").read_text(encoding="utf-8"))

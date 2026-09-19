@@ -104,16 +104,22 @@ def expand_contract(contract: dict) -> list[dict]:
     return cases
 
 
+def select_cases(cases: list[dict], prefixes: list[str], limit: int = 0) -> list[dict]:
+    selected = [case for case in cases if not prefixes or any(case["id"].startswith(prefix) for prefix in prefixes)]
+    return selected[: max(0, limit)] if limit else selected
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate Director's semantic contracts through the configured Jev gateway without executing actions.")
     parser.add_argument("--contracts", type=Path, default=REPO / "tests/contracts/semantic.json")
     parser.add_argument("--limit", type=int, default=0, help="evaluate only the first N cases; zero means all")
+    parser.add_argument("--id-prefix", action="append", default=[], help="evaluate only cases whose id starts with this value; repeatable")
     parser.add_argument("--requests-per-minute", type=int, default=int(os.environ.get("DIRECTOR_SEMANTIC_RPM", "0")), help="pace cases to stay below a gateway/provider request budget")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args(argv)
     contract = json.loads(args.contracts.read_text(encoding="utf-8"))
     expanded = expand_contract(contract)
-    cases = expanded[: max(0, args.limit)] if args.limit else expanded
+    cases = select_cases(expanded, args.id_prefix, args.limit)
     started = time.time()
     results = []
     last_case_started = 0.0

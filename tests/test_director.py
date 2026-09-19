@@ -48,6 +48,35 @@ class DirectorTests(unittest.TestCase):
  def setUp(self): self.tmp=tempfile.TemporaryDirectory(); self.store=Store(self.tmp.name); self.hypr=FakeHypr()
  def tearDown(self): self.tmp.cleanup()
  def make(self,a,launcher=Mock()): return Director(self.hypr,FakeJev(a),self.store,launcher=launcher,sleeper=lambda _:None)
+ def test_obvious_native_commands_bypass_semantic_routing(self):
+  examples={
+   "capture the full screen":"screenshot", "stop screen recording":"screenrecord_stop",
+   "record the whole screen":"screenrecord_start", "set a 20 minute reminder to stretch":"reminder",
+   "cerrá la pantalla":"lock", "mute the microphone":"mic_mute",
+   "switch audio output":"audio_output_switch", "let the PC idle":"allow_idle",
+   "make all window borders rounded":"window_rounding",
+  }
+  for query,capability in examples.items():
+   with self.subTest(query=query): self.assertEqual(Director._explicit_native_capability(query),capability)
+ def test_explicit_window_synonyms_have_deterministic_intents(self):
+  examples={
+   "tile X and ChatGPT together in workspace 2":"arrange",
+   "put X in the tile on the left":"swap_left", "put X in the tile on the right":"swap_right",
+   "achicá X":"resize_smaller", "agrandá ChatGPT":"resize_larger",
+   "sacá ChatGPT del tiling":"float", "volvé ChatGPT al mosaico":"tile",
+   "sacá ChatGPT de pantalla completa":"fullscreen_off",
+  }
+  for query,intent in examples.items():
+   with self.subTest(query=query): self.assertEqual(Director._explicit_window_intent(query),intent)
+ def test_percentage_words_are_normalized_in_code(self):
+  self.assertEqual(Director._percentage("reduce X twenty percent"),20)
+  self.assertEqual(Director._percentage("achicá X veinte por ciento"),20)
+ def test_screen_ocr_is_explicitly_blocked_before_screenshot_routing(self):
+  plan=self.make({}).plan("extract text from part of the screen")
+  self.assertFalse(plan.executable); self.assertFalse(plan.steps); self.assertTrue(any("OCR" in warning for warning in plan.warnings))
+ def test_screenshot_save_language_is_not_mistaken_for_a_scene(self):
+  plan=self.make({}).plan("save a screenshot of the entire screen")
+  self.assertTrue(plan.executable); self.assertEqual((plan.steps[0].operation,plan.steps[0].target),("native","screenshot"))
  def test_typed_answers_make_multi_move_and_step_summaries(self):
   plan=self.make(answers("move",["0xaaa","0xbbb"],workspace="next_empty")).plan("move")
   self.assertTrue(plan.executable); self.assertEqual([s.workspace for s in plan.steps],[2,2]); self.assertIn("Terminal",plan.steps[0].to_dict()["summary"])

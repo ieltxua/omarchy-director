@@ -92,11 +92,11 @@ class NativeCapabilities:
         exact = re.search(r"(?<!\d)(\d{1,2})\s*(?:px|pixels?)\b", lowered)
         if exact:
             return min(32, int(exact.group(1)))
-        if any(phrase in lowered for phrase in ("square", "sharp", "no rounding", "without rounding", "sin redondeo", "esquinas rectas")):
+        if any(phrase in lowered for phrase in ("square", "sharp", "no rounding", "without rounding", "remove all window rounding", "sin redondeo", "esquinas rectas", "ventanas cuadradas")):
             return 0
         if any(phrase in lowered for phrase in ("slightly", "a little", "poco redonde", "suavemente")):
             return 4
-        if any(phrase in lowered for phrase in ("very rounded", "more rounded", "más redonde", "mas redonde", "bien redonde")):
+        if any(phrase in lowered for phrase in ("very rounded", "more rounded", "increase window corner rounding", "más redonde", "mas redonde", "bien redonde")):
             return 12
         return 8
 
@@ -107,13 +107,14 @@ class NativeCapabilities:
 
     @staticmethod
     def _reminder(query: str) -> tuple[int, str]:
-        match = re.search(
-            r"(?:in|en|dentro de)\s+(\d{1,3})\s*(minutos?|minutes?|mins?|horas?|hours?|hrs?)\s*(?:to|para|de que)?\s*(.+)$",
-            query.strip(), re.IGNORECASE,
-        )
+        text = query.strip()
+        match = re.search(r"(?:in|en|dentro de)\s+(\d{1,3})\s*(minutos?|minutes?|mins?|horas?|hours?|hrs?)\s*(?:to|para|de que)?\s*(.+)$", text, re.IGNORECASE)
+        if not match:
+            match = re.search(r"(?:set|create|crea|creá)\s+(?:a|un)?\s*(\d{1,3})\s*(minutos?|minutes?|mins?|horas?|hours?|hrs?)\s+(?:reminder|recordatorio)\s*(?:to|para)?\s*(.+)$", text, re.IGNORECASE)
         if not match:
             raise CapabilityError("Decime cuándo y qué querés recordar")
         amount, unit, message = int(match.group(1)), match.group(2).casefold(), match.group(3).strip(" .")
+        message = re.sub(r"^(?:remind\s+me\s+to|recordame(?:\s+que)?|reminder\s+to)\s+", "", message, flags=re.IGNORECASE).strip(" .")
         minutes = amount * 60 if unit.startswith(("h", "hora")) else amount
         if not message or minutes < 1 or minutes > 10080:
             raise CapabilityError("El recordatorio necesita un mensaje y un plazo de hasta 7 días")
