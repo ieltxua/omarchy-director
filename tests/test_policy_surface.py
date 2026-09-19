@@ -8,6 +8,7 @@ import tempfile
 import unittest
 
 from tests.lab.semantic_eval import expand_contract
+from tests.lab.capability_audit import parse_hyprctl_commands
 from director.capabilities import CAPABILITY_CRITERIA
 
 from director.models import Plan, Step
@@ -86,6 +87,10 @@ class SemanticContractTests(unittest.TestCase):
             self.assertTrue(capability["requirements"], capability["id"])
             self.assertIn("unit", capability["tiers"])
             self.assertIn("semantic", capability["tiers"])
+
+    def test_hyprctl_api_audit_parses_help_written_to_either_stream(self):
+        commands = parse_hyprctl_commands("commands:\n    clients  list windows\n    eval <code>  evaluate Lua\n")
+        self.assertEqual(commands, {"clients", "eval"})
 
 
 class VoiceAdapterTests(unittest.TestCase):

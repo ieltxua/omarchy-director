@@ -21,6 +21,10 @@ def run_json(argv: list[str]) -> dict:
     return json.loads(result.stdout)
 
 
+def parse_hyprctl_commands(output: str) -> set[str]:
+    return {line.strip().split()[0] for line in output.splitlines() if line.startswith("    ") and line.strip()}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Audit Director against the installed Omarchy and Hyprland command surfaces.")
     parser.add_argument("--matrix", type=Path, default=REPO / "tests/contracts/capability_matrix.json")
@@ -36,8 +40,8 @@ def main(argv: list[str] | None = None) -> int:
     relevant = [command for command in public if command.get("group") in relevant_groups and not command.get("requires_sudo")]
 
     help_result = subprocess.run(["hyprctl", "--help"], capture_output=True, text=True, check=False)
-    hypr_help = help_result.stdout if help_result.returncode == 0 else ""
-    hypr_commands = {line.strip().split()[0] for line in hypr_help.splitlines() if line.startswith("    ") and line.strip()}
+    hypr_help = f"{help_result.stdout}\n{help_result.stderr}" if help_result.returncode == 0 else ""
+    hypr_commands = parse_hyprctl_commands(hypr_help)
 
     required_routes = sorted({requirement for capability in matrix["capabilities"] for requirement in capability["requirements"] if requirement.startswith("omarchy ")})
     required_routes.extend(requirement for requirement in matrix["window_engine"]["requirements"] if requirement.startswith("omarchy "))
