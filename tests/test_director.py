@@ -9,7 +9,7 @@ from director.models import Plan, Step
 from director.service import Director
 from director.store import Store
 from director.cli import main
-from director.capabilities import NativeResult
+from director.capabilities import NativeCapabilities, NativeResult
 
 CLIENTS = [{"address":"0xaaa","title":"Terminal","class":"term","workspace":{"id":1},"at":[10,20],"size":[800,600],"floating":False,"fullscreen":False},{"address":"0xbbb","title":"Browser","class":"chromium","workspace":{"id":2},"at":[30,40],"size":[900,700],"floating":False,"fullscreen":False}]
 class Result:
@@ -278,6 +278,11 @@ class DirectorTests(unittest.TestCase):
   response=answers("no_match"); response["capability"]={"type":"choice","choice":"no_match","confidence":.99}
   native=FakeNative(); plan=Director(self.hypr,FakeJev(response),self.store,launcher=Mock(),sleeper=lambda _:None,native=native).plan("make every window square")
   self.assertTrue(plan.executable); self.assertEqual(plan.steps[0].target,"window_rounding")
+ def test_performance_power_mode_cannot_be_misrouted_as_visual_style(self):
+  response=answers("keep"); response["capability"]={"type":"choice","choice":"hyprland_style","confidence":.99}
+  director=Director(self.hypr,FakeJev(response),self.store,launcher=Mock(),sleeper=lambda _:None,native=NativeCapabilities(Mock()))
+  plan=director.plan("switch to performance power mode")
+  self.assertFalse(plan.executable); self.assertEqual(plan.steps,[])
  def test_normal_action_can_save_result_as_scene(self):
   director=self.make(answers("move",["0xaaa"],workspace="workspace:2"))
   plan=director.plan("move Terminal to workspace 2 and save as focus desk")

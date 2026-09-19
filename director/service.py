@@ -272,7 +272,9 @@ class Director:
         global_opacity = re.search(r"\b(?:opacity|opaque|opacidad)\b", lowered) and re.search(r"\b(?:active|inactive|fullscreen|pantalla completa|global|all|every|activas?|inactivas?|todas?)\b", lowered)
         global_transparency = re.search(r"\b(?:transparent|transparente)\b", lowered) and re.search(r"\b(?:all|every|global|inactive|todas?|inactivas?)\b", lowered)
         dim_inactive = re.search(r"\b(?:dim|dimming|atenu(?:a|á|ar|aci[oó]n))\b", lowered) and re.search(r"\b(?:inactive|inactivas?)\b", lowered)
-        preset = re.search(r"\b(?:compact|compacto|compacta|spacious|airy|espacioso|espaciosa|amplio|amplia|minimal|minimalist|minimalista|performance|rendimiento|low power|bajo consumo|focus|foco)\b", lowered) and re.search(r"\b(?:desktop|escritorio|preset|mode|modo|style|estilo)\b", lowered)
+        preset = re.search(r"\b(?:compact|compacto|compacta|spacious|airy|espacioso|espaciosa|amplio|amplia|minimal|minimalist|minimalista|performance|rendimiento|focus|foco)\b", lowered) and re.search(r"\b(?:desktop|escritorio|preset|mode|modo|style|estilo)\b", lowered)
+        if preset and re.search(r"\b(?:power|battery|energy|profile|potencia|bater[ií]a|energ[ií]a|perfil)\b", lowered):
+            preset = None
         if any(re.search(pattern, lowered) for pattern in style_patterns) or global_opacity or global_transparency or dim_inactive or preset:
             return "hyprland_style"
         routes = (

@@ -187,12 +187,14 @@ class NativeCapabilities:
     @classmethod
     def _requested_hypr_style(cls, query: str) -> tuple[dict[str, Any], str]:
         lowered = query.casefold()
+        if re.search(r"\b(?:performance|rendimiento)\b", lowered) and re.search(r"\b(?:power|battery|energy|profile|potencia|bater[ií]a|energ[ií]a|perfil)\b", lowered):
+            raise CapabilityError("Ese pedido parece un perfil de energía, no un estilo visual")
         preset_aliases = {
             "compact": ("compact", "compacto", "compacta"),
             "spacious": ("spacious", "airy", "espacioso", "espaciosa", "amplio", "amplia"),
             "minimal": ("minimal", "minimalist", "minimalista", "flat", "plano", "plana"),
             "focus": ("focus mode", "focus preset", "modo foco", "preset foco"),
-            "performance": ("performance", "rendimiento", "low power", "bajo consumo"),
+            "performance": ("performance", "rendimiento"),
         }
         for preset, aliases in preset_aliases.items():
             if any(alias in lowered for alias in aliases):

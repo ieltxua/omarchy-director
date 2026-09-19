@@ -132,6 +132,8 @@ class NativeCapabilitiesTests(unittest.TestCase):
             native.execute(step)
         with self.assertRaisesRegex(CapabilityError, "Separá los efectos"):
             native.build_step("hyprland_style", "enable blur and disable shadows")
+        with self.assertRaisesRegex(CapabilityError, "perfil de energía"):
+            native.build_step("hyprland_style", "switch to performance power mode")
 
     def test_hyprland_style_rolls_back_if_effect_cannot_be_verified(self):
         reads = iter(('5 5 5 5', '6 6 6 6', '5 5 5 5'))

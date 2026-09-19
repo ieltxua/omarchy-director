@@ -383,11 +383,10 @@ invokes the native plugin validator. A stable release requires `fast`, `stress`,
 `semantic-all`, `api-audit`, and `live`, plus bar, F10, and one real microphone
 smoke test when voice behavior changed.
 
-The current headless acceptance run passes 9 of 10 live compositor cases. Exact window
-focus is the remaining acceptance gap: the typed Hyprland dispatcher returns
-success and the target workspace is selected, but a compositor session without
-an active input seat does not update `activewindow`. Validate focus once through
-the real Moonlight/keyboard session before treating this candidate as stable.
+The current Omarchy acceptance run passes all 11 live compositor cases, including
+exact focus, style mutation, observed effect, and exact undo. The runner still
+isolates its windows on reserved workspaces; test the palette and voice path from
+the real keyboard/Moonlight session before treating a release candidate as stable.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [CHANGELOG.md](CHANGELOG.md), and
 [SECURITY.md](SECURITY.md).
