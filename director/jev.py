@@ -36,6 +36,17 @@ class Jev:
             conn.request("GET", "/health/upstream" if upstream else "/health/ready")
             response = conn.getresponse()
             payload = json.loads(response.read().decode("utf-8"))
+            if upstream and response.status == 404:
+                # Older Agent Lab gateways expose verified provider readiness on
+                # /health/ready instead of a separate zero-inference probe.
+                conn = self.connection(self.socket_path)
+                conn.request("GET", "/health/ready")
+                response = conn.getresponse()
+                payload = json.loads(response.read().decode("utf-8"))
+                if response.status != 200 or not isinstance(payload, dict) or not (
+                    payload.get("authenticated") is True and payload.get("upstream_verified") is True
+                ):
+                    raise JevError("Jev gateway did not verify provider readiness")
             if response.status != 200 or not isinstance(payload, dict):
                 raise JevError("Jev gateway is not ready")
             return payload

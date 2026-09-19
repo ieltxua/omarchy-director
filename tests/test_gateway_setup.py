@@ -66,6 +66,37 @@ class GatewayTests(unittest.TestCase):
         request = upstream.call_args.args[0]
         self.assertEqual(request.full_url, "https://openrouter.ai/api/v1/key")
 
+    def test_upstream_health_accepts_verified_legacy_ready_contract(self):
+        responses = iter(
+            (
+                (404, {"error": {"code": "NOT_FOUND"}}),
+                (200, {"status": "local_ready", "authenticated": True, "upstream_verified": True}),
+            )
+        )
+        paths: list[str] = []
+
+        class Response:
+            def __init__(self, status: int, payload: dict):
+                self.status = status
+                self.payload = payload
+
+            def read(self):
+                return json.dumps(self.payload).encode()
+
+        class Connection:
+            def __init__(self, _socket_path: str):
+                pass
+
+            def request(self, _method: str, path: str):
+                paths.append(path)
+
+            def getresponse(self):
+                return Response(*next(responses))
+
+        health = Jev("/legacy.sock", connection=Connection).health(upstream=True)
+        self.assertEqual(paths, ["/health/upstream", "/health/ready"])
+        self.assertTrue(health["upstream_verified"])
+
     def test_typed_decision_round_trip(self):
         upstream = {
             "model": "typesafe/jev-1.13",

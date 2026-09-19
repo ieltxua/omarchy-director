@@ -5,6 +5,11 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0-rc.2] - 2026-09-19
+
+- Accept the existing Agent Lab gateway's authenticated `/health/ready`
+  contract when the dedicated zero-inference upstream probe is unavailable.
+
 ## [2.1.0-rc.1] - 2026-09-19
 
 This experimental release candidate documents the permanent plugin identity,
@@ -73,7 +78,8 @@ and setup path. It is AI-assisted/vibe-coded and is not marketplace-verified.
 - Initial theme-native Director with typed Jev planning, Hyprland execution,
   preview, history, rollback, undo, bar entry, launcher, and voice adapter.
 
-[Unreleased]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.1...HEAD
+[Unreleased]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.2...HEAD
+[2.1.0-rc.2]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.1...v2.1.0-rc.2
 [2.1.0-rc.1]: https://github.com/ieltxua/omarchy-director/releases/tag/v2.1.0-rc.1
 [2.0.0]: https://github.com/ieltxua/omarchy-director/releases/tag/v2.0.0
 [1.0.0]: https://github.com/ieltxua/omarchy-director/releases/tag/v1.0.0
