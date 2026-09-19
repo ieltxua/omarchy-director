@@ -293,21 +293,38 @@ class HyprTests(unittest.TestCase):
   self.assertEqual(runner.call_count,3); self.assertIn('action = "toggle"',runner.call_args.args[0][2])
  def test_resize_window_validates_bounds_and_uses_typed_dispatch(self):
   clients=[{"address":"0xaaa","at":[967,38],"size":[941,1030],"floating":False,"workspace":{"id":2}},{"address":"0xbbb","at":[12,38],"size":[941,1030],"floating":False,"workspace":{"id":2}}]
+  active={"address":"0xbbb"}
   def run(argv,**kwargs):
    if argv[:3]==["hyprctl","-j","clients"]: return Result(json.dumps(clients))
-   if argv[:3]==["hyprctl","-j","activewindow"]: return Result(json.dumps(clients[1]))
+   if argv[:3]==["hyprctl","-j","activewindow"]: return Result(json.dumps(active))
+   if argv[:2]==["hyprctl","eval"] and "hl.dsp.focus" in argv[2]:
+    active["address"]="0xaaa" if "address:0xaaa" in argv[2] else "0xbbb"
    return Result("ok")
-  runner=Mock(side_effect=run); hypr=Hyprland(runner); hypr.resize_window("0xAaA",800,1030)
+  runner=Mock(side_effect=run); hypr=Hyprland(runner,sleeper=lambda _:None); hypr.resize_window("0xAaA",800,1030)
   evals=[call.args[0][2] for call in runner.call_args_list if call.args[0][:2]==["hyprctl","eval"]]
   self.assertIn('x = 141, y = 0, relative = true',evals[1]); self.assertIn('address:0xaaa',evals[0]); self.assertIn('address:0xbbb',evals[2])
   with self.assertRaisesRegex(Exception,"invalid window size"): hypr.resize_window("0xaaa",1,560)
  def test_swap_window_focuses_target_uses_typed_direction_and_restores_focus(self):
+  active={"address":"0xbbb"}
   def run(argv,**kwargs):
-   if argv[:3]==["hyprctl","-j","activewindow"]: return Result(json.dumps({"address":"0xbbb"}))
+   if argv[:3]==["hyprctl","-j","activewindow"]: return Result(json.dumps(active))
+   if argv[:2]==["hyprctl","eval"] and "hl.dsp.focus" in argv[2]:
+    active["address"]="0xaaa" if "address:0xaaa" in argv[2] else "0xbbb"
    return Result("ok")
-  runner=Mock(side_effect=run); Hyprland(runner).swap_window("0xaaa","l")
+  runner=Mock(side_effect=run); Hyprland(runner,sleeper=lambda _:None).swap_window("0xaaa","l")
   evals=[call.args[0][2] for call in runner.call_args_list if call.args[0][:2]==["hyprctl","eval"]]
   self.assertIn('address:0xaaa',evals[0]); self.assertIn('direction = "l"',evals[1]); self.assertIn('address:0xbbb',evals[2])
+ def test_focus_window_waits_for_hyprland_and_fails_closed(self):
+  polls=iter(({"address":"0xbbb"},{"address":"0xaaa"}))
+  def run(argv,**kwargs):
+   if argv[:3]==["hyprctl","-j","activewindow"]: return Result(json.dumps(next(polls)))
+   return Result("ok")
+  Hyprland(Mock(side_effect=run),sleeper=lambda _:None).focus_window("0xaaa")
+  def never(argv,**kwargs):
+   if argv[:3]==["hyprctl","-j","activewindow"]: return Result(json.dumps({"address":"0xbbb"}))
+   return Result("ok")
+  with self.assertRaisesRegex(Exception,"did not receive focus"):
+   Hyprland(Mock(side_effect=never),sleeper=lambda _:None).focus_window("0xaaa")
 
 class CliTests(unittest.TestCase):
  def test_history_limit_returns_top_level_items(self):

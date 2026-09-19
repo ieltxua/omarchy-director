@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import time
 from typing import Any
 
 
@@ -11,8 +12,9 @@ class HyprlandError(RuntimeError):
 
 
 class Hyprland:
-    def __init__(self, runner=subprocess.run):
+    def __init__(self, runner=subprocess.run, sleeper=time.sleep):
         self.runner = runner
+        self.sleeper = sleeper
 
     def json(self, noun: str) -> Any:
         result = self.runner(["hyprctl", "-j", noun], capture_output=True, text=True, check=False)
@@ -59,8 +61,16 @@ class Hyprland:
             raise HyprlandError(result.stderr.strip() or result.stdout.strip() or "Hyprland dispatch failed")
 
     def focus_window(self, address: str) -> None:
-        selector = f"address:{self._address(address)}"
+        wanted = self._address(address)
+        selector = f"address:{wanted}"
         self.eval_dispatch(f"hl.dsp.focus({{ window = hl.get_window({json.dumps(selector)}) }})")
+        for attempt in range(8):
+            active = self.json("activewindow")
+            if isinstance(active, dict) and str(active.get("address", "")).lower() == wanted:
+                return
+            if attempt < 7:
+                self.sleeper(0.02)
+        raise HyprlandError("window did not receive focus")
 
     def move_window(self, address: str, workspace: int | str, follow: bool = False) -> None:
         selector = f"address:{self._address(address)}"

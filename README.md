@@ -4,7 +4,7 @@ Director is a theme-native Omarchy shell plugin that turns natural language into
 typed, previewable Hyprland actions. It can arrange windows, navigate workspaces,
 control selected Omarchy features, and capture entire desktops as reusable scenes.
 
-This repository is an experimental release candidate (`2.1.0-rc.2`): it is
+This repository is an experimental release candidate (`2.1.0-rc.3`): it is
 AI-assisted/vibe-coded software, provided for hands-on evaluation. It is local-first,
 collects no telemetry, and is not marketplace-verified. Omarchy shell plugins are
 unsandboxed code; review the source and trust the checkout before enabling it.

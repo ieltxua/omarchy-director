@@ -52,7 +52,7 @@ class PublicPackagingTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         manifest = json.loads((root / "manifest.json").read_text())
         self.assertEqual(manifest["id"], "io.github.ieltxua.director")
-        self.assertEqual(manifest["version"], "2.1.0-rc.2")
+        self.assertEqual(manifest["version"], "2.1.0-rc.3")
         self.assertEqual(manifest["license"], "0BSD")
         for relative in ("LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CHANGELOG.md", "man/omarchy-director.1"):
             self.assertTrue((root / relative).is_file(), relative)
