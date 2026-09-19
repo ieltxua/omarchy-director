@@ -5,6 +5,12 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0-rc.1] - 2026-09-19
+
+This experimental release candidate documents the permanent plugin identity,
+0BSD licensing, local-first/no-telemetry posture, and the native Omarchy install
+and setup path. It is AI-assisted/vibe-coded and is not marketplace-verified.
+
 ### Added
 
 - Reversible, bounded resizing for one clearly identified window, including
@@ -15,6 +21,12 @@ this project uses [Semantic Versioning](https://semver.org/).
 - Director Lab with seed-reproducible high-volume desktop simulation, a versioned
   bilingual Jev contract corpus, voice policy tests, and isolated live Omarchy E2E.
 - CI coverage for Python 3.10 and 3.12 plus a 10,000-case stress gate.
+- A bundled, pinned Jev/OpenRouter gateway with private Unix socket, systemd user
+  service, rate/capacity limits, secret-field rejection, and one-command setup.
+- Declarative app/window aliases, voice defaults, and a user-narrowable YOLO
+  allowlist that cannot expand the compiled safety boundary.
+- A provider-adapter boundary that keeps gateway IPC, typed validation, and
+  policy stable while provider authentication and endpoints evolve independently.
 
 ### Changed
 
@@ -61,6 +73,7 @@ this project uses [Semantic Versioning](https://semver.org/).
 - Initial theme-native Director with typed Jev planning, Hyprland execution,
   preview, history, rollback, undo, bar entry, launcher, and voice adapter.
 
-[Unreleased]: https://github.com/ieltxu/omarchy-director/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/ieltxu/omarchy-director/releases/tag/v2.0.0
-[1.0.0]: https://github.com/ieltxu/omarchy-director/releases/tag/v1.0.0
+[Unreleased]: https://github.com/ieltxua/omarchy-director/compare/v2.1.0-rc.1...HEAD
+[2.1.0-rc.1]: https://github.com/ieltxua/omarchy-director/releases/tag/v2.1.0-rc.1
+[2.0.0]: https://github.com/ieltxua/omarchy-director/releases/tag/v2.0.0
+[1.0.0]: https://github.com/ieltxua/omarchy-director/releases/tag/v1.0.0

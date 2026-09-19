@@ -5,10 +5,23 @@ from typing import Any
 
 
 AUTOEXECUTE_NATIVE = frozenset({
-    "theme_set", "nightlight_toggle", "dnd_toggle", "stay_awake", "allow_idle",
-    "volume_up", "volume_down", "volume_mute", "mic_mute", "brightness_up",
-    "brightness_down",
+    "nightlight_toggle", "dnd_toggle",
+    "volume_mute", "mic_mute",
 })
+
+
+def yolo_policy_name(step: "Step") -> str:
+    if step.operation == "native":
+        return str(step.target)
+    if step.operation == "window_state":
+        return str(step.params.get("state", ""))
+    if step.operation == "window_resize":
+        return "resize"
+    if step.operation == "window_swap":
+        return "swap"
+    if step.operation == "isolate":
+        return "move"
+    return step.operation
 
 
 @dataclass
@@ -64,7 +77,14 @@ class Plan:
                 return False
         return True
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, yolo_allow: set[str] | None = None) -> dict[str, Any]:
+        auto_executable = self.auto_executable
+        if auto_executable and yolo_allow is not None:
+            for step in self.steps:
+                policy_name = yolo_policy_name(step)
+                if policy_name not in yolo_allow:
+                    auto_executable = False
+                    break
         return {
             "token": self.token,
             "confidence": self.confidence,
@@ -72,7 +92,7 @@ class Plan:
             "steps": [step.to_dict() for step in self.steps],
             "warnings": self.warnings,
             "executable": self.executable,
-            "auto_executable": self.auto_executable,
+            "auto_executable": auto_executable,
         }
 
     @classmethod

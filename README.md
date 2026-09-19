@@ -4,6 +4,11 @@ Director is a theme-native Omarchy shell plugin that turns natural language into
 typed, previewable Hyprland actions. It can arrange windows, navigate workspaces,
 control selected Omarchy features, and capture entire desktops as reusable scenes.
 
+This repository is an experimental release candidate (`2.1.0-rc.1`): it is
+AI-assisted/vibe-coded software, provided for hands-on evaluation. It is local-first,
+collects no telemetry, and is not marketplace-verified. Omarchy shell plugins are
+unsandboxed code; review the source and trust the checkout before enabling it.
+
 Jev interprets intent from closed candidate sets. Local deterministic code owns
 permissions, validation, exact arguments, execution, verification, and undo.
 Prompt text is never executed as shell.
@@ -26,10 +31,11 @@ Prompt text is never executed as shell.
 
 Required:
 
-- Omarchy with shell-plugin support and typed Hyprland dispatchers.
-- Python 3.10 or newer, `jq`, `hyprctl`, `omarchy`, and `omarchy-shell`.
-- A local Jev gateway exposing `POST /v1/systemone` over a Unix socket and the
-  pinned `typesafe/jev-1.13` model.
+- Omarchy with shell-plugin support (`omarchy`/`omarchy-shell`) and typed
+  Hyprland dispatchers.
+- Python 3.10 or newer and `hyprctl`.
+- An OpenRouter API key for the bundled local Jev gateway. Jev is required for
+  semantic planning; the pinned model is `typesafe/jev-1.13`.
 
 Optional:
 
@@ -37,18 +43,54 @@ Optional:
 - A microphone helper accepting `start` and `stop`, configured through
   `DIRECTOR_MIC_CONTROL_BIN`, for Bluetooth/profile bridges.
 
-Director does not read an OpenRouter or TypeSafe credential. The local Jev gateway
-owns provider authentication.
+Director has no TypeSafe credential. Its setup command stores the OpenRouter key
+in a user-only file; within Director, only the bundled gateway opens it for
+provider authentication. The QML plugin and planning process never receive it.
+Because Omarchy plugins are unsandboxed under the same Unix account, another
+same-user plugin could still read that file. Use a dedicated, low-limit key.
 
 ## Installation
 
-Omarchy plugins are git repositories. Install and enable Director with:
+Omarchy plugins are git repositories. Install Director with:
 
 ```bash
-omarchy plugin add https://github.com/ieltxu/omarchy-director.git --enable
+omarchy plugin add https://github.com/ieltxua/omarchy-director --enable
 ```
 
-That is sufficient to use Director from its bar icon. Left-click opens the text
+The Omarchy installer intentionally executes no plugin hooks. Run Director's
+single explicit setup step from the managed checkout; it installs the CLI links,
+then configures and starts the private user service:
+
+```bash
+cd ~/.config/omarchy/plugins/io.github.ieltxua.director
+./install.sh --setup
+omarchy-director doctor
+```
+
+`doctor` probes both the local socket and the provider's authentication endpoint;
+it does not spend a Jev inference request.
+
+`setup` reads `OPENROUTER_API_KEY` when it is already exported; otherwise it asks
+for the key with hidden input. For automation without an environment variable,
+pipe it to `omarchy-director setup --key-stdin`. Never place the key in an argument.
+
+### Providers and adapters
+
+The RC currently ships one supported adapter:
+
+| Provider | Credential | Endpoint | Model policy |
+| --- | --- | --- | --- |
+| `openrouter` | `OPENROUTER_API_KEY` | OpenRouter Decisions API | pinned `typesafe/jev-1.13` |
+
+It can be selected explicitly with `omarchy-director setup --provider openrouter`.
+Provider authentication and HTTP details live behind
+`director.providers.ProviderAdapter`; the Unix-socket protocol, typed validation,
+policy, and Director client remain provider-neutral. Adding a provider requires a
+new adapter, one registry entry, credential metadata, contract tests, and docs.
+Unknown providers and model overrides fail closed. The current adapter neither
+requests nor assumes a direct TypeSafe credential.
+
+Setup is the supported path for preparing local dependencies. Left-click opens the text
 palette; right-click starts voice in preview mode when Voxtype is installed.
 
 ### Optional CLI, launcher, man page, and shortcuts
@@ -57,8 +99,9 @@ The official Omarchy plugin installer intentionally runs no hooks. Director's
 optional integration script must therefore be invoked explicitly:
 
 ```bash
-cd ~/.config/omarchy/plugins/ieltxu.director
-./install.sh
+cd ~/.config/omarchy/plugins/io.github.ieltxua.director
+./install.sh                 # CLI, launcher, and man page
+./install.sh --setup         # above plus the bundled Jev gateway
 ```
 
 This adds user-owned CLI links, a desktop launcher, and `man omarchy-director`.
@@ -74,7 +117,8 @@ up `bindings.lua` before changing its marked Director block.
 
 ## Jev configuration
 
-Director searches, in order:
+The bundled gateway listens on
+`$XDG_RUNTIME_DIR/omarchy-director/jev.sock`. Director searches, in order:
 
 1. `JEV_SOCKET_PATH`;
 2. the saved `jev_socket_path`;
@@ -82,11 +126,18 @@ Director searches, in order:
 4. `$XDG_RUNTIME_DIR/agent-lab/jev.sock`;
 5. `$XDG_RUNTIME_DIR/jev.sock`.
 
-Configure a nonstandard socket and verify the runtime:
+If setup is unavailable or you need a manual override, set the socket explicitly
+and verify the runtime:
+
+```bash
+export JEV_SOCKET_PATH=/run/user/1000/jev-gateway/jev.sock
+omarchy-director doctor
+```
+
+The CLI also retains the explicit configuration command:
 
 ```bash
 omarchy-director configure --jev-socket /run/user/1000/jev-gateway/jev.sock
-omarchy-director doctor
 ```
 
 When Jev is unavailable, deterministic status, scene listing, and undo still work;
@@ -143,6 +194,24 @@ omarchy-director scenes delete --name deep-work
 
 See `omarchy-director --help` or `man omarchy-director` for the complete interface.
 
+### Declarative customization
+
+Aliases and voice defaults live in the private XDG config file and can be changed
+without editing the plugin:
+
+```bash
+omarchy-director configure --app-alias 'browser=firefox.desktop'
+omarchy-director configure --window-alias 'chat=Slack'
+omarchy-director configure --voice-mode preview
+omarchy-director configure --yolo-allow 'focus,move,arrange,volume_up,volume_down'
+omarchy-director configure --show
+```
+
+App aliases target an installed desktop-entry ID. Window aliases target a unique
+class/title substring. The YOLO list can only narrow Director's compiled hard
+safety policy; adding an unsafe operation does not make it auto-executable. The
+bar's right-click mode is also configurable through its native widget setting.
+
 ## Voice and YOLO
 
 Voice preview is the public default:
@@ -171,7 +240,16 @@ before enabling any third-party plugin.
 Director sends the user's command plus a compact inventory of window/application
 candidates to the configured local Jev gateway. It does not send credentials,
 clipboard contents, browser/page contents, environment variables, or arbitrary
-files. Jev returns typed choices and never grants execution authority.
+files, and collects no telemetry. Jev returns typed choices and never grants
+execution authority.
+
+Director rejects and redacts common credential formats and assignment syntax,
+but no pattern matcher can recognize every secret. Do not put passwords, tokens,
+keys, or private configuration in desktop commands.
+
+Customization is declarative through the plugin's typed configuration and scene
+data; it does not provide arbitrary shell hooks. YOLO cannot bypass hard safety
+validation or turn an ineligible action into automatic execution.
 
 Execution uses a fixed action registry:
 
@@ -195,22 +273,30 @@ Director follows XDG directories:
 
 Configuration, scenes, history, and temporary transcripts use user-only
 permissions. Removal preserves scenes and history unless the user deletes them.
+The local diagnostics ring keeps the latest 500 compact plan outcomes, including
+the typed command, warnings, and selected steps but no desktop snapshots.
+Credential-like values are redacted before plan or diagnostic persistence. Use
+the ring to turn real failures into regression cases.
 
 ## Update and removal
 
 Update through Omarchy's reviewed fast-forward flow:
 
 ```bash
-omarchy plugin update ieltxu.director
+omarchy plugin update io.github.ieltxua.director
 ```
 
 Remove optional integrations first, while the checkout still exists:
 
 ```bash
-cd ~/.config/omarchy/plugins/ieltxu.director
+cd ~/.config/omarchy/plugins/io.github.ieltxua.director
 ./uninstall.sh
-omarchy plugin remove ieltxu.director
+omarchy plugin remove io.github.ieltxua.director
 ```
+
+`./uninstall.sh` stops and removes the bundled user service but preserves the
+credential, scenes, history, and configuration. Use `./uninstall.sh --purge-key`
+only when you also want the stored OpenRouter key removed.
 
 The uninstall script removes only artifacts it can identify as Director-managed,
 moves the man page/desktop entry and binding backup into Director's state directory,
@@ -222,14 +308,14 @@ Run:
 
 ```bash
 omarchy-director doctor
-omarchy plugin validate ~/.config/omarchy/plugins/ieltxu.director
-omarchy plugin list --json | jq '.[] | select(.id == "ieltxu.director")'
+omarchy plugin validate ~/.config/omarchy/plugins/io.github.ieltxua.director
+omarchy plugin list --json | jq '.[] | select(.id == "io.github.ieltxua.director")'
 journalctl --user --since '10 minutes ago' | grep -i director
 ```
 
 - **No plan:** verify the Jev socket and local gateway with `doctor`.
 - **CLI not found:** run the optional `./install.sh` or use
-  `~/.config/omarchy/plugins/ieltxu.director/bin/omarchy-director` directly.
+  `~/.config/omarchy/plugins/io.github.ieltxua.director/bin/omarchy-director` directly.
 - **Voice unavailable:** install Voxtype and verify an input source; text mode is
   independent of voice.
 - **Shortcut missing:** shortcuts are optional; run `./install.sh --bindings`.
@@ -274,4 +360,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), [CHANGELOG.md](CHANGELOG.md), and
 
 ## License
 
-MIT © 2026 Ieltxu. See [LICENSE](LICENSE).
+0BSD © 2026 Director contributors. See [LICENSE](LICENSE).

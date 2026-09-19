@@ -90,6 +90,8 @@ Item {
 
   function close() {
     previewTimer.stop()
+    autoExecutePending = false
+    queuedQuery = ""
     opened = false
   }
 
@@ -123,9 +125,16 @@ Item {
 
   function consumePlan(raw) {
     busy = false
+    var completedQuery = plannedQuery
+    if (completedQuery !== commandField.text.trim()) {
+      autoExecutePending = false
+      plan = null
+      return
+    }
     try {
       var result = JSON.parse(raw)
       if (result.ok === false || result.error) {
+        autoExecutePending = false
         plan = null
         phase = "error"
         errorMessage = result.message || (typeof result.error === "string" ? result.error : (result.error && result.error.message)) || "No pude preparar un plan seguro."
@@ -135,11 +144,15 @@ Item {
         errorMessage = plan.executable ? "" : (plan.message || "Necesito una orden más específica.")
         if (plan.executable && autoExecutePending) {
           autoExecutePending = false
-          if (isSafeForAutoExecute(plan)) Qt.callLater(function() { root.executePlan() })
+          var completedPlan = plan
+          if (isSafeForAutoExecute(completedPlan)) Qt.callLater(function() {
+            if (root.plan === completedPlan && root.query.trim() === completedQuery) root.executePlan()
+          })
           else message = "Esta acción necesita Enter porque no tiene un undo completo."
         }
       }
     } catch (e) {
+      autoExecutePending = false
       plan = null
       phase = "error"
       errorMessage = "Director devolvió una respuesta inválida."
@@ -331,7 +344,7 @@ Item {
     visible: root.opened
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
-    WlrLayershell.namespace: "ieltxu-director"
+    WlrLayershell.namespace: "omarchy-director"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
@@ -425,6 +438,7 @@ Item {
 
           onTextChanged: {
             if (root.syncingQuery) return
+            root.autoExecutePending = false
             root.query = text
             root.plan = null
             root.phase = text.trim() ? "typing" : "idle"

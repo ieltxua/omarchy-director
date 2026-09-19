@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+sandbox="$(mktemp -d)"
+trap 'rm -rf -- "$sandbox"' EXIT
+
+prepare() {
+  local root="$1"
+  local plugin_dir="$root/config/omarchy/plugins/io.github.ieltxua.director"
+  local legacy_dir="$root/config/omarchy/plugins/ieltxu.director"
+  mkdir -p "$plugin_dir" "$legacy_dir/bin" "$root/bin" "$root/data/man/man1" "$root/data/applications" "$root/state" "$root/fake-bin"
+  cp -a "$repo_dir/." "$plugin_dir/"
+  for command_name in omarchy-director omarchy-director-ui omarchy-director-voice; do
+    touch "$legacy_dir/bin/$command_name"
+    ln -s "$legacy_dir/bin/$command_name" "$root/bin/$command_name"
+  done
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 0' >"$root/fake-bin/omarchy"
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 0' >"$root/fake-bin/omarchy-shell"
+  chmod +x "$root/fake-bin/omarchy" "$root/fake-bin/omarchy-shell"
+  printf '%s\n' '[Desktop Entry]' 'X-Omarchy-Director-Managed=true' >"$root/data/applications/ieltxu-director.desktop"
+  mkdir -p "$root/config/hypr"
+  printf '%s\n' \
+    '-- before legacy' \
+    '-- BEGIN ieltxu.director' \
+    'bind = SUPER ALT, J, exec, omarchy-director-ui' \
+    '-- END ieltxu.director' \
+    '-- after legacy' >"$root/config/hypr/bindings.lua"
+}
+
+working="$sandbox/working"
+prepare "$working"
+printf '%s\n' '.TH OMARCHY-DIRECTOR 1 "legacy"' >"$working/data/man/man1/omarchy-director.1"
+env HOME="$working/home" XDG_CONFIG_HOME="$working/config" XDG_DATA_HOME="$working/data" XDG_STATE_HOME="$working/state" DIRECTOR_BIN_DIR="$working/bin" PATH="$working/fake-bin:$PATH" \
+  "$working/config/omarchy/plugins/io.github.ieltxua.director/install.sh"
+
+for command_name in omarchy-director omarchy-director-ui omarchy-director-voice; do
+  [[ "$(readlink "$working/bin/$command_name")" == "$working/config/omarchy/plugins/io.github.ieltxua.director/bin/$command_name" ]]
+done
+grep -Fqx '.\" Managed by Omarchy Director' "$working/data/man/man1/omarchy-director.1"
+[[ ! -e "$working/data/applications/ieltxu-director.desktop" ]]
+[[ -e "$working/state/omarchy-director/backups/ieltxu-director.desktop" ]]
+grep -q '^-- BEGIN ieltxu.director$' "$working/config/hypr/bindings.lua"
+
+env HOME="$working/home" XDG_CONFIG_HOME="$working/config" XDG_DATA_HOME="$working/data" XDG_STATE_HOME="$working/state" DIRECTOR_BIN_DIR="$working/bin" PATH="$working/fake-bin:$PATH" \
+  "$working/config/omarchy/plugins/io.github.ieltxua.director/uninstall.sh"
+! grep -Eq 'ieltxu\.director|io\.github\.ieltxua\.director' "$working/config/hypr/bindings.lua"
+grep -q '^-- before legacy$' "$working/config/hypr/bindings.lua"
+grep -q '^-- after legacy$' "$working/config/hypr/bindings.lua"
+
+blocked="$sandbox/blocked"
+prepare "$blocked"
+printf '%s\n' '.TH SOMETHING-ELSE 1 "unmanaged"' >"$blocked/data/man/man1/omarchy-director.1"
+if env HOME="$blocked/home" XDG_CONFIG_HOME="$blocked/config" XDG_DATA_HOME="$blocked/data" XDG_STATE_HOME="$blocked/state" DIRECTOR_BIN_DIR="$blocked/bin" PATH="$blocked/fake-bin:$PATH" \
+  "$blocked/config/omarchy/plugins/io.github.ieltxua.director/install.sh" >/dev/null 2>&1; then
+  echo "Installer unexpectedly replaced an unmanaged manual" >&2
+  exit 1
+fi
+for command_name in omarchy-director omarchy-director-ui omarchy-director-voice; do
+  [[ "$(readlink "$blocked/bin/$command_name")" == "$blocked/config/omarchy/plugins/ieltxu.director/bin/$command_name" ]]
+done
+
+echo "Director v2 migration lifecycle passed"

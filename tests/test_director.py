@@ -316,7 +316,7 @@ class CliTests(unittest.TestCase):
   with patch("director.cli.Director",return_value=fake), patch("sys.stdout",stream): self.assertEqual(main(["history","--limit","2"]),0)
   self.assertEqual(json.loads(stream.getvalue()),{"ok":True,"items":[{"n":2},{"n":3}]})
  def test_diagnostics_omits_snapshots_and_returns_recent_evidence(self):
-  fake=Mock(); fake.store.plans.return_value=[{"query":"bad","warnings":["why"],"snapshot":{"secret":"large"}}]; fake.store.history.return_value=[{"summary":"done","snapshot":{"large":True}}]
+  fake=Mock(); fake.store.diagnostics.return_value=[{"query":"bad","warnings":["why"],"snapshot":{"secret":"large"}}]; fake.store.history.return_value=[{"summary":"done","snapshot":{"large":True}}]
   stream=io.StringIO()
   with patch("director.cli.Director",return_value=fake), patch("sys.stdout",stream): self.assertEqual(main(["diagnostics"]),0)
   output=json.loads(stream.getvalue()); self.assertNotIn("snapshot",output["plans"][0]); self.assertEqual(output["history"],[{"at":None,"summary":"done","undo_of":None}])

@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ -z "${OMARCHY_PATH:-}" ]]; then
-  OMARCHY_PATH="$(systemctl --user show-environment 2>/dev/null | sed -n 's/^OMARCHY_PATH=//p' | tail -n 1)"
-  : "${OMARCHY_PATH:=/usr/share/omarchy}"
-  export OMARCHY_PATH
-fi
-
 query=""
 execute="false"
 
@@ -48,4 +42,4 @@ print(json.dumps({
 PY
 })"
 
-exec omarchy-shell shell call ieltxu.director open "$payload"
+exec omarchy-shell shell call io.github.ieltxua.director open "$payload"

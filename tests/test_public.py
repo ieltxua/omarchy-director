@@ -51,8 +51,9 @@ class PublicPackagingTests(unittest.TestCase):
     def test_release_metadata_and_public_docs_are_present(self):
         root = Path(__file__).resolve().parents[1]
         manifest = json.loads((root / "manifest.json").read_text())
-        self.assertEqual(manifest["version"], "2.0.0")
-        self.assertEqual(manifest["license"], "MIT")
+        self.assertEqual(manifest["id"], "io.github.ieltxua.director")
+        self.assertEqual(manifest["version"], "2.1.0-rc.1")
+        self.assertEqual(manifest["license"], "0BSD")
         for relative in ("LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CHANGELOG.md", "man/omarchy-director.1"):
             self.assertTrue((root / relative).is_file(), relative)
 

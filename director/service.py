@@ -6,11 +6,13 @@ import time
 from typing import Any
 
 from .capabilities import CAPABILITY_CRITERIA, CapabilityError, NativeCapabilities
+from .config import normalized_config
 from .desktop import desktop_entries, launch
 from .hyprland import Hyprland
 from .jev import Jev, JevError
 from .models import Plan, Step
 from .scenes import SceneManager, capture_scene, match_window_specs, normalize_scene_name
+from .security import redact_sensitive_text
 from .store import Store
 
 OPERATIONS = ("focus", "launch", "move", "arrange", "launch_arrange", "float", "tile", "fullscreen_on", "fullscreen_off", "resize_smaller", "resize_larger", "swap_left", "swap_right", "swap_up", "swap_down", "keep", "no_match")
@@ -45,6 +47,7 @@ class Director:
     def __init__(self, hypr: Hyprland | None = None, jev: Jev | None = None, store: Store | None = None, launcher=launch, sleeper=time.sleep, native: NativeCapabilities | None = None):
         self.hypr, self.jev, self.store, self.launcher, self.sleeper = hypr or Hyprland(), jev or Jev(), store or Store(), launcher, sleeper
         self.native = native or NativeCapabilities(self.hypr.runner)
+        self.config = normalized_config()
         self.scene_manager = SceneManager(self.hypr, self.store)
         self._step_warnings: list[str] = []
 
@@ -53,7 +56,19 @@ class Director:
         return {"windows": [{"address": c.get("address"), "title": c.get("title", ""), "workspace": c.get("workspace", {}).get("id")} for c in state["clients"]], "workspaces": state["workspaces"], "monitors": state["monitors"], "scenes": [scene["name"] for scene in self.scene_manager.list()]}
 
     def _store_plan(self, plan: Plan) -> Plan:
-        self.store.save_plan({**plan.to_dict(), "query": plan.query, "created_at": plan.created_at, "snapshot": plan.snapshot})
+        safe_query = redact_sensitive_text(plan.query[:500])
+        self.store.save_plan({**plan.to_dict(), "query": safe_query, "created_at": plan.created_at, "snapshot": plan.snapshot})
+        append_diagnostic = getattr(self.store, "append_diagnostic", None)
+        if append_diagnostic:
+            append_diagnostic({
+                "created_at": plan.created_at,
+                "query": safe_query,
+                "confidence": plan.confidence,
+                "executable": plan.executable,
+                "summary": plan.summary,
+                "warnings": list(plan.warnings),
+                "steps": [step.to_dict() for step in plan.steps],
+            })
         return plan
 
     @staticmethod
@@ -161,7 +176,7 @@ class Director:
         return sorted(matches, key=lambda address: int(clients[address].get("focusHistoryID", 999999)))
 
     @staticmethod
-    def _explicit_apps(query: str, apps: dict[str, dict[str, str]]) -> list[str]:
+    def _explicit_apps(query: str, apps: dict[str, dict[str, str]], aliases: dict[str, str] | None = None) -> list[str]:
         normalized = " ".join(re.findall(r"[a-z0-9]+", query.casefold()))
         padded = f" {normalized} "
         matches: dict[str, str] = {}
@@ -172,6 +187,10 @@ class Director:
                 if candidate and f" {candidate} " in padded:
                     if len(candidate) > len(matches.get(app_id, "")):
                         matches[app_id] = candidate
+        for alias, app_id in (aliases or {}).items():
+            candidate = " ".join(re.findall(r"[a-z0-9]+", alias.casefold()))
+            if app_id in apps and candidate and f" {candidate} " in padded:
+                matches[app_id] = candidate
         maximal = [app_id for app_id, identity in matches.items() if not any(identity != other and f" {identity} " in f" {other} " for other in matches.values())]
         return sorted(maximal)
 
@@ -192,6 +211,21 @@ class Director:
         best = max(scores.values(), default=0)
         matches = [address for address, score in scores.items() if score == best and score > 0]
         return matches[0] if len(matches) == 1 else None
+
+    @staticmethod
+    def _aliased_window(query: str, clients: dict[str, dict[str, Any]], aliases: dict[str, str]) -> str | None:
+        normalized = " ".join(re.findall(r"[a-z0-9]+", query.casefold()))
+        padded = f" {normalized} "
+        selected: set[str] = set()
+        for alias, target in aliases.items():
+            candidate = " ".join(re.findall(r"[a-z0-9]+", alias.casefold()))
+            if not candidate or f" {candidate} " not in padded:
+                continue
+            target_folded = target.casefold()
+            matches = [address for address, client in clients.items() if target_folded in f"{client.get('class', '')} {client.get('title', '')}".casefold()]
+            if len(matches) == 1:
+                selected.add(matches[0])
+        return next(iter(selected)) if len(selected) == 1 else None
 
     @staticmethod
     def _explicit_focus_query(query: str) -> bool:
@@ -242,17 +276,17 @@ class Director:
         layout, layout_confidence = _answer_choice(answers, "layout")
         view_choice, view_confidence = _answer_choice(answers, "workspace_view")
         named_apps = [app_id for app_id in ranked_apps if self._app_match_score(query, app_id, apps[app_id]) > 0]
-        named_launch = intent in {"launch", "launch_arrange"} and bool(named_apps)
+        explicit_apps = self._explicit_apps(query, apps, self.config["aliases"]["apps"])
+        named_launch = intent in {"launch", "launch_arrange"} and bool(named_apps or explicit_apps)
         window_threshold = 0.65 if confidence >= 0.75 and (intent not in {"move", "arrange"} or workspace_confidence >= 0.85) else 0.85
         app_threshold = 0.50 if named_launch else 0.85
         windows = _selected_noul(answers, "window", sorted(clients)[:MAX_WINDOWS], window_threshold)
-        explicit_window = self._explicit_window(query, clients, active_address)
+        explicit_window = self._aliased_window(query, clients, self.config["aliases"]["windows"]) or self._explicit_window(query, clients, active_address)
         if explicit_window and self._explicit_focus_query(query):
             intent, confidence = "focus", max(confidence, 0.90)
         if explicit_window and intent in {"focus", "resize_smaller", "resize_larger", "swap_left", "swap_right", "swap_up", "swap_down"}:
             windows = [explicit_window]
         selected_apps = _selected_noul(answers, "app", ranked_apps, app_threshold)
-        explicit_apps = self._explicit_apps(query, apps)
         if named_launch and explicit_apps:
             selected_apps = explicit_apps
         warnings: list[str] = []

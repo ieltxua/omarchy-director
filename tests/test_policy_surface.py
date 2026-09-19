@@ -30,13 +30,20 @@ class AutoExecutePolicyTests(unittest.TestCase):
                 self.assertFalse(self.plan(Step("native", capability)).auto_executable)
 
     def test_safe_native_capability_is_auto_executable(self):
-        self.assertTrue(self.plan(Step("native", "volume_up")).auto_executable)
+        self.assertTrue(self.plan(Step("native", "volume_mute")).auto_executable)
+
+    def test_observation_dependent_native_changes_require_preview(self):
+        for capability in ("volume_up", "volume_down", "brightness_up", "brightness_down", "theme_set", "stay_awake", "allow_idle"):
+            with self.subTest(capability=capability):
+                self.assertFalse(self.plan(Step("native", capability)).auto_executable)
 
     def test_serialized_policy_is_the_qml_authority(self):
         payload = self.plan(Step("native", "lock")).to_dict()
         self.assertIs(payload["auto_executable"], False)
         qml = (REPO / "Director.qml").read_text(encoding="utf-8")
         self.assertIn("candidate.auto_executable === true", qml)
+        self.assertIn("root.autoExecutePending = false", qml)
+        self.assertIn("completedQuery !== commandField.text.trim()", qml)
 
 
 class SemanticContractTests(unittest.TestCase):
@@ -46,7 +53,7 @@ class SemanticContractTests(unittest.TestCase):
         cases = payload["cases"]
         ids = [case["id"] for case in cases]
         self.assertEqual(len(ids), len(set(ids)))
-        self.assertGreaterEqual(len(cases), 15)
+        self.assertGreaterEqual(len(cases), 25)
         for case in cases:
             self.assertIsInstance(case["query"], str)
             self.assertTrue(case["query"].strip())

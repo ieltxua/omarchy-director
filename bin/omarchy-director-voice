@@ -1,15 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ -z "${OMARCHY_PATH:-}" ]]; then
-  OMARCHY_PATH="$(systemctl --user show-environment 2>/dev/null | sed -n 's/^OMARCHY_PATH=//p' | tail -n 1)"
-  : "${OMARCHY_PATH:=/usr/share/omarchy}"
-  export OMARCHY_PATH
-fi
-
 action="${1:-toggle}"
 [[ $# -gt 0 ]] && shift
-yolo="false"
+yolo=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -25,6 +19,23 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+
+if [[ -z "$yolo" ]]; then
+  voice_mode="$(python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+path = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "omarchy-director" / "config.json"
+try:
+    value = json.loads(path.read_text()).get("voice_mode")
+except (OSError, ValueError, AttributeError):
+    value = None
+print("yolo" if value == "yolo" else "preview")
+PY
+)"
+  [[ "$voice_mode" == "yolo" ]] && yolo="true" || yolo="false"
+fi
 
 runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/omarchy-director"
 session_file="$runtime_dir/voice-session"
@@ -55,7 +66,7 @@ start_recording() {
     unlink "$session_file"
     exit 1
   fi
-  omarchy-shell shell call ieltxu.director open '{"voice":"recording"}'
+  omarchy-shell shell call io.github.ieltxua.director open '{"voice":"recording"}'
 }
 
 stop_recording() {
@@ -70,7 +81,7 @@ stop_recording() {
   sleep 0.1
   mic_stop
   if ! wait "$stop_pid"; then
-    omarchy-shell shell call ieltxu.director open '{"query":"","voice":"error"}' || true
+    omarchy-shell shell call io.github.ieltxua.director open '{"query":"","voice":"error"}' || true
     unlink "$result_file"
     exit 1
   fi
@@ -103,7 +114,7 @@ case "$action" in
       case "$transcript" in "$runtime_dir"/transcript-*.txt) [[ -e "$transcript" ]] && unlink "$transcript" ;; esac
       unlink "$session_file"
     fi
-    omarchy-shell shell hide ieltxu.director || true
+    omarchy-shell shell hide io.github.ieltxua.director || true
     ;;
   *) echo "Unknown action: $action" >&2; exit 2 ;;
 esac

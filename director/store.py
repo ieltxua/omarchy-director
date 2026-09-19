@@ -80,6 +80,15 @@ class Store:
         history.append(record)
         self._write("history.json", history[-50:])
 
+    def diagnostics(self) -> list[dict[str, Any]]:
+        raw = self._read("diagnostics.json", [])
+        return raw if isinstance(raw, list) else []
+
+    def append_diagnostic(self, record: dict[str, Any]) -> None:
+        diagnostics = self.diagnostics()
+        diagnostics.append(deepcopy(record))
+        self._write("diagnostics.json", diagnostics[-500:])
+
     # Scenes deliberately have their own file rather than sharing the bounded
     # plan/history stores.  They are user-created state and must survive plan
     # expiry and undo-history trimming.

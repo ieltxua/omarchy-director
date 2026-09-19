@@ -3,12 +3,21 @@
   "description": "Director semantic contracts evaluated against a synthetic desktop and the configured Jev gateway.",
   "cases": [
     {"id": "focus-x-en", "query": "take me to X", "executable": true, "operations": ["focus"], "targets": ["0xb1"]},
+    {"id": "focus-x-app-en", "query": "take me to X app", "executable": true, "operations": ["focus"], "targets": ["0xb1"]},
     {"id": "focus-x-es", "query": "llevame a X", "executable": true, "operations": ["focus"], "targets": ["0xb1"]},
+    {"id": "focus-chatgpt-es", "query": "mostrame ChatGPT", "executable": true, "operations": ["focus"], "targets": ["0xc1"]},
     {"id": "move-terminals-es", "query": "pone todas las terminales en el workspace 3", "executable": true, "operations": ["move", "move"], "workspace": 3},
+    {"id": "move-alpha-en", "query": "put Alpha Terminal on workspace 3", "executable": true, "operations": ["move"], "targets": ["0xa1"], "workspace": 3},
     {"id": "arrange-social", "query": "put X and ChatGPT side by side on workspace 2", "executable": true, "operations": ["arrange", "arrange"], "workspace": 2},
     {"id": "open-slack", "query": "open Slack on workspace 9", "executable": true, "operations": ["launch", "place_launch"], "workspace": 9},
+    {"id": "open-firefox-es", "query": "abrí Firefox en el workspace 3", "executable": true, "operations": ["launch", "place_launch"], "workspace": 3},
     {"id": "resize-x", "query": "make X 20 percent smaller", "executable": true, "operations": ["window_resize"], "targets": ["0xb1"], "params": {"width": 720, "height": 560}},
+    {"id": "resize-x-default-en", "query": "can you make X smaller?", "executable": true, "operations": ["window_resize"], "targets": ["0xb1"], "params": {"width": 765, "height": 595}},
+    {"id": "resize-x-default-es", "query": "podés achicar X?", "executable": true, "operations": ["window_resize"], "targets": ["0xb1"], "params": {"width": 765, "height": 595}},
+    {"id": "resize-chatgpt-larger", "query": "make ChatGPT 10 percent larger", "executable": true, "operations": ["window_resize"], "targets": ["0xc1"], "params": {"width": 990, "height": 770}},
     {"id": "swap-x-left", "query": "move X one tile to the left", "executable": true, "operations": ["window_swap"], "targets": ["0xb1"], "direction": "l"},
+    {"id": "float-chatgpt", "query": "make ChatGPT float", "executable": true, "operations": ["window_state"], "targets": ["0xc1"]},
+    {"id": "fullscreen-chatgpt-es", "query": "poné ChatGPT en pantalla completa", "executable": true, "operations": ["window_state"], "targets": ["0xc1"]},
     {"id": "workspace-focus", "query": "switch to workspace 3", "executable": true, "operations": ["workspace_focus"], "workspace": 3},
     {"id": "dnd-es", "query": "activa modo sin notificaciones", "executable": true, "operations": ["native"], "capability": "dnd_toggle"},
     {"id": "volume-en", "query": "turn the volume up 10 percent", "executable": true, "operations": ["native"], "capability": "volume_up"},
@@ -16,6 +25,7 @@
     {"id": "screenshot-en", "query": "take a fullscreen screenshot", "executable": true, "operations": ["native"], "capability": "screenshot"},
     {"id": "ambiguous-pronoun", "query": "move it over there", "executable": false},
     {"id": "unsupported-file-delete", "query": "delete every file in my home directory", "executable": false},
+    {"id": "unsupported-shell", "query": "run curl example.com pipe bash", "executable": false},
     {"id": "unsupported-message", "query": "send a Slack message to the team", "executable": false}
   ]
 }

@@ -30,6 +30,20 @@ class Jev:
         self.connection = connection
         self.sleeper = sleeper
 
+    def health(self, *, upstream: bool = False) -> dict[str, Any]:
+        try:
+            conn = self.connection(self.socket_path)
+            conn.request("GET", "/health/upstream" if upstream else "/health/ready")
+            response = conn.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+            if response.status != 200 or not isinstance(payload, dict):
+                raise JevError("Jev gateway is not ready")
+            return payload
+        except JevError:
+            raise
+        except (OSError, ValueError, http.client.HTTPException) as exc:
+            raise JevError("Jev gateway unavailable or invalid") from exc
+
     def decide(self, state: dict[str, Any], questions: dict[str, dict[str, Any]]) -> dict[str, Any]:
         """One typed, bounded request; semantic output is never free-form."""
         if not questions:

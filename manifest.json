@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "ieltxu.director",
+  "id": "io.github.ieltxua.director",
   "name": "Director",
-  "version": "2.0.0",
-  "author": "Ieltxu",
-  "license": "MIT",
-  "homepage": "https://github.com/ieltxu/omarchy-director",
+  "version": "2.1.0-rc.1",
+  "author": "Director contributors",
+  "license": "0BSD",
+  "homepage": "https://github.com/ieltxua/omarchy-director",
   "description": "A theme-native, reversible natural-language director for Hyprland windows and workspaces",
   "kinds": [
     "overlay",
@@ -21,7 +21,15 @@
     "category": "System",
     "allowMultiple": false,
     "defaultSection": "left",
-    "defaults": {},
-    "schema": []
+    "defaults": {
+      "voiceMode": "preview"
+    },
+    "schema": [
+      {
+        "key": "voiceMode",
+        "type": "string",
+        "label": "Right-click voice mode (preview or yolo)"
+      }
+    ]
   }
 }

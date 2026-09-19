@@ -9,7 +9,8 @@ python3 -m compileall -q director
 python3 -m py_compile tests/lab/semantic_eval.py tests/lab/e2e_omarchy.py
 python3 -m json.tool manifest.json >/dev/null
 python3 -m json.tool tests/contracts/semantic.json >/dev/null
-bash -n install.sh uninstall.sh bin/omarchy-director bin/omarchy-director-ui bin/omarchy-director-voice tests/director-lab
+bash -n install.sh uninstall.sh bin/omarchy-director bin/omarchy-director-ui bin/omarchy-director-voice tests/director-lab tests/install-migration
+./tests/install-migration
 
 if find . -type l -print -quit | grep -q .; then
   echo "Plugin checkout contains a symlink, which Omarchy rejects" >&2
